@@ -270,6 +270,6 @@ async function aAdmins(){
   const snap=await getDocs(collection(db,"admins")),rows=snap.docs.map(d=>d.id);
   $("#ab").innerHTML=`<div class="panel"><h3>Admins</h3><p class="mut">Owner: ${esc(ADMINS.join(", "))}</p><div class="row"><input id="ae" type="email" placeholder="new-admin@gmail.com" style="margin:0;max-width:280px"><button class="btn p" id="aa">Make admin</button></div><p class="err" id="ar"></p></div>
   <table style="margin-top:14px">${rows.map(e=>`<tr><td>${esc(e)}</td><td><button class="btn d" data-r="${esc(e)}">Remove</button></td></tr>`).join("")||'<tr><td class="mut">No extra admins yet.</td></tr>'}</table>`;
-  $("#aa").onclick=async()=>{const e=$("#ae").value.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(e))return $("#ar").textContent="Enter a valid email.";await setDoc(doc(db,"admins",e),{email:e,addedBy:S.user.email,createdAt:serverTimestamp()});aAdmins()};
+  $("#aa").onclick=async()=>{const e=$("#ae").value.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(e))return $("#ar").textContent="Enter a valid email.";try{await setDoc(doc(db,"admins",e),{email:e,addedBy:S.user.email,createdAt:serverTimestamp()})}catch(x){return $("#ar").textContent="Could not add admin: "+(x.code||x.message||x)+" (check Firestore rules for the admins collection)."}aAdmins()};
   document.querySelectorAll("[data-r]").forEach(b=>b.onclick=async()=>{await deleteDoc(doc(db,"admins",b.dataset.r));aAdmins()})}
 </script></body></html>
