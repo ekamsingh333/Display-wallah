@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Spare Parts Wholesale</title>
+<title>Display Wallah</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet"><style>
 :root{--bg:#0b0c10;--panel:#14161c;--line:#262a33;--text:#f4f5f7;--mut:#9aa0ad;--y:#f5ff3d;--g:#55f09a;--r:#ff667d}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px 'DM Sans',system-ui,sans-serif}
@@ -36,6 +36,90 @@ body{background:radial-gradient(700px 400px at 10% -10%,#f5ff3d14,transparent 60
 .bar{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:9;background:#1b1e26;border:1px solid #3a3f4b;border-radius:16px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;max-width:640px;margin:auto;box-shadow:0 12px 40px #000a}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;max-width:520px}.panel h3{margin:0 0 4px}.row2{display:flex;gap:8px}
 label.mut{display:block;margin-top:12px;font-size:13px}input[type=file]{padding:10px}
+
+/* ===== Animations & button polish ===== */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:none}}
+@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.96)}60%{transform:scale(1.03)}100%{transform:scale(1)}}
+@keyframes glow{0%,100%{text-shadow:0 0 0 #f5ff3d00}50%{text-shadow:0 0 18px #f5ff3d66}}
+.logo span{animation:glow 3s ease-in-out infinite}
+.card{animation:fadeUp .5s ease both}
+.hero{animation:fadeUp .5s ease both}
+.prod{animation:fadeUp .45s ease both}
+.prod:nth-child(2){animation-delay:.05s}.prod:nth-child(3){animation-delay:.1s}.prod:nth-child(4){animation-delay:.15s}.prod:nth-child(5){animation-delay:.2s}.prod:nth-child(6){animation-delay:.25s}.prod:nth-child(n+7){animation-delay:.3s}
+.prod:hover{transform:translateY(-4px);box-shadow:0 14px 34px #000a;border-color:#f5ff3d66}
+.prod img{transition:transform .35s ease}.prod:hover img{transform:scale(1.05)}
+.prod{overflow:hidden}
+.drawer{animation:slideIn .3s cubic-bezier(.2,.8,.2,1)}
+.modal{animation:fadeIn .2s ease}
+.bar{animation:slideUp .35s ease both}
+.panel,.tabs,table{animation:fadeUp .35s ease both}
+.btn{position:relative;overflow:hidden;border-radius:12px;padding:11px 16px;letter-spacing:.01em;
+  background:linear-gradient(180deg,#232733,#1a1d25);border:1px solid #333948;
+  transition:transform .15s ease,box-shadow .2s ease,border-color .2s ease,background .2s ease}
+.btn:hover:not(:disabled){transform:translateY(-2px);border-color:#4a5163;box-shadow:0 8px 20px #0009}
+.btn:active:not(:disabled){transform:translateY(0) scale(.96);box-shadow:none}
+.btn::after{content:"";position:absolute;top:0;left:-120%;width:60%;height:100%;
+  background:linear-gradient(120deg,transparent,#ffffff30,transparent);transform:skewX(-20deg);transition:left .5s ease}
+.btn:hover:not(:disabled)::after{left:140%}
+.btn.p{background:linear-gradient(180deg,#faff6b,#f5ff3d 60%,#dfe92c);color:#111;border-color:#f5ff3d;box-shadow:0 6px 18px #f5ff3d33}
+.btn.p:hover:not(:disabled){box-shadow:0 10px 26px #f5ff3d55;border-color:#fbffa0}
+.btn.d{border-color:#ff667d55}.btn.d:hover:not(:disabled){background:#ff667d1f;border-color:var(--r)}
+.btn:disabled{cursor:not-allowed;box-shadow:none}
+.btn:focus-visible,input:focus-visible,.chip:focus-visible{outline:2px solid var(--y);outline-offset:2px}
+.tabs .btn.on{background:linear-gradient(180deg,#faff6b,#f5ff3d);box-shadow:0 6px 18px #f5ff3d33}
+.chip{transition:transform .15s ease,background .2s ease,color .2s ease,border-color .2s ease}
+.chip:hover{transform:translateY(-2px);color:var(--text);border-color:#4a5163}.chip:active{transform:scale(.95)}
+.chip.on{animation:pop .25s ease;color:#111}
+.step b{display:inline-block;min-width:24px;text-align:center}
+input{transition:border-color .2s ease,box-shadow .2s ease}
+input:focus{outline:none;border-color:var(--y);box-shadow:0 0 0 3px #f5ff3d22}
+@media (prefers-reduced-motion:reduce){*,*::after{animation:none!important;transition:none!important}}
+
+/* ===== UI v2 ===== */
+@keyframes float{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-24px) scale(1.12)}}
+@keyframes shine{to{background-position:200% 0}}
+@keyframes bump{0%{transform:scale(.4)}60%{transform:scale(1.35)}100%{transform:scale(1)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes fadeBd{from{opacity:0}to{opacity:1}}
+body::before,body::after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(90px);pointer-events:none;animation:float 14s ease-in-out infinite}
+body::before{width:340px;height:340px;background:#f5ff3d1f;top:-80px;left:-80px}
+body::after{width:300px;height:300px;background:#55f09a14;bottom:-60px;right:-60px;animation-delay:-6s}
+.y{color:var(--y)}
+.top{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);background:#0b0c10cc}
+.logo{font-size:22px}
+.nav{gap:6px}
+.btn.nv{background:transparent;border-color:transparent;color:var(--mut);padding:9px 12px}
+.btn.nv:hover:not(:disabled){color:var(--text);background:#1b1e26;box-shadow:none}
+.btn.nv.on{color:#111;background:var(--y);border-color:var(--y)}
+.btn.cartb{background:linear-gradient(180deg,#faff6b,#f5ff3d 60%,#dfe92c);color:#111;border-color:var(--y);box-shadow:0 6px 18px #f5ff3d33;display:inline-flex;align-items:center;gap:6px}
+.cartb i{font-style:normal;background:#111;color:var(--y);min-width:20px;height:20px;border-radius:99px;display:none;font-size:12px;padding:0 6px;line-height:20px;text-align:center}
+.cartb i.on{display:inline-block}.cartb i.bump{animation:bump .35s ease}
+.btn.out{padding:9px 12px;font-size:13px;color:var(--mut)}
+.pill{display:inline-block;font-size:12px;font-weight:700;color:var(--y);background:#f5ff3d14;border:1px solid #f5ff3d40;border-radius:99px;padding:6px 12px;margin-bottom:14px}
+.hero h1{background:linear-gradient(90deg,#fff,#f5ff3d 60%,#fff);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shine 6s linear infinite}
+.hero input{padding-left:44px;background:#0e1015 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='%239aa0ad' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='9' cy='9' r='6'/%3E%3Cpath d='m14 14 4 4'/%3E%3C/svg%3E") no-repeat 14px center}
+.card.login{text-align:center;padding:30px 24px;box-shadow:0 20px 60px #000a}
+.card.login .mark{font-size:44px;animation:bob 3s ease-in-out infinite}
+.card.login h2{font:700 28px 'Space Grotesk';letter-spacing:-.03em}
+.gi{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#111;color:var(--y);font-weight:800;font-size:13px;margin-right:6px}
+#g{padding:14px;font-size:16px;display:inline-flex;justify-content:center;align-items:center}
+.prod{border-radius:16px;background:linear-gradient(180deg,#171a21,#12141a)}
+.prod .in.sm,.prod .out.sm{display:flex;align-items:center;gap:6px}
+.prod .in.sm::before,.prod .out.sm::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pb>.btn{width:100%;margin-top:6px}.pb .step{gap:8px}.pb .step b{font-size:17px}.pb .step .btn{flex:0 0 46px;padding:8px 0;text-align:center}
+.chip{padding:9px 16px}
+.bar{background:#1b1e26ee;backdrop-filter:blur(12px);border-color:#f5ff3d44}
+.bd{position:fixed;inset:0;background:#000a;z-index:14;animation:fadeBd .25s ease;backdrop-filter:blur(3px)}
+.drawer{box-shadow:-20px 0 60px #000a}
+.btn.x{border-radius:50%;width:38px;height:38px;padding:0;display:grid;place-items:center}
+.drawer .btn[data-m],.drawer .btn[data-pl]{width:38px;height:38px;padding:0;border-radius:50%}
+#pay{position:sticky;bottom:0;padding:15px;font-size:16px;margin-top:6px}
+.panel{background:linear-gradient(180deg,#171a21,#12141a)}
+table tr{transition:background .15s}table tr:hover{background:#ffffff08}
+@media(max-width:520px){.top{padding:10px 12px}.logo{font-size:19px}.btn.nv,.btn.out,.btn.cartb{padding:8px 10px;font-size:13px}.grid{grid-template-columns:repeat(2,1fr);gap:10px}.hero{padding-top:22px}}
 </style></head><body>
 <div id="app"></div>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -46,7 +130,7 @@ import{getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,onSnapshot,serverTimestam
 
 /* ====== EDIT THESE ====== */
 const firebaseConfig={apiKey:"AIzaSyD4ahz9H3-5kD7rfqowHt3CAPDCjuKbUv0",authDomain:"display-wala.firebaseapp.com",projectId:"display-wala",appId:"1:788299746317:web:6e37f2fbf512a2847b9944"};
-const ADMINS=["ekamsinghlehal@gmail.com"];          // must match firestore.rules
+const ADMINS=["displaywallahoffical@gmail.com"];          // must match firestore.rules
 const RAZORPAY_KEY="rzp_test_XXXXXXXXXXXX";          // Razorpay Key ID
 /* ======================== */
 
@@ -71,8 +155,8 @@ onAuthStateChanged(auth,async u=>{
   },()=>login("Could not load your account."));
 });
 
-function login(msg=""){root.innerHTML=`<div class="center"><div class="card"><h2>Spare Parts Wholesale</h2><p class="mut">For registered mobile repair shops. Sign in to continue.</p>
-<button class="btn p" id="g" style="width:100%;margin-top:14px">Login with Google</button><p class="err">${msg}</p></div></div>`;
+function login(msg=""){root.innerHTML=`<div class="center"><div class="card login"><div class="mark">📱</div><h2>Display <span class="y">Wallah</span></h2><p class="mut">For registered mobile repair shops. Sign in to continue.</p>
+<button class="btn p" id="g" style="width:100%;margin-top:14px"><span class="gi">G</span> Login with Google</button><p class="err">${msg}</p></div></div>`;
  $("#g").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){if(e.code!=="auth/popup-closed-by-user")$(".err").textContent="Login failed. Try again."}}}
 
 function banned(){root.innerHTML=`<div class="center"><div class="card" style="text-align:center"><h2 style="color:var(--r)">Your account has been suspended</h2><p class="mut">${esc(S.user.email)} can't place orders. Contact us to resolve this.</p><button class="btn" id="o">Sign out</button></div></div>`;$("#o").onclick=()=>signOut(auth)}
@@ -99,31 +183,31 @@ const cartCount=()=>Object.values(S.cart).reduce((a,b)=>a+b,0);
 const ph=n=>"data:image/svg+xml;utf8,"+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect width='200' height='200' fill='#1b1e26'/><text x='100' y='122' font-size='62' text-anchor='middle' fill='#f5ff3d' font-family='sans-serif' font-weight='700'>${esc((n||"?").slice(0,2).toUpperCase())}</text></svg>`);
 async function shell(){
   try{await loadProducts()}catch{}
-  root.innerHTML=`<div class="top"><b class="logo">Spare<span>Parts</span></b><div class="row">${isAdmin()?'<button class="btn" id="va">Admin</button>':""}<button class="btn" id="vs">Store</button><button class="btn" id="o">Sign out</button></div></div><div class="wrap" id="main"></div><div id="bar"></div><div id="dr"></div>`;
-  $("#o").onclick=()=>signOut(auth);$("#vs").onclick=()=>{S.view="store";render()};isAdmin()&&($("#va").onclick=()=>{S.view="admin";render()});render()}
-function render(){S.view==="admin"&&isAdmin()?admin():store();bar()}
-function bar(){const n=cartCount(),t=Object.entries(S.cart).reduce((a,[id,q])=>a+q*(S.products.find(p=>p.id===id)?.price||0),0),on=n&&S.view==="store";
+  root.innerHTML=`<div class="top"><b class="logo">Display<span>Wallah</span></b><div class="row nav">${isAdmin()?'<button class="btn nv" id="va">⚙ Admin</button>':""}<button class="btn nv" id="vs">🏪 Store</button><button class="btn cartb" id="tc">🛒 Cart<i id="tcn"></i></button><button class="btn out" id="o">Sign out</button></div></div><div class="wrap" id="main"></div><div id="bar"></div><div id="dr"></div>`;
+  $("#o").onclick=()=>signOut(auth);$("#tc").onclick=cart;$("#vs").onclick=()=>{S.view="store";render()};isAdmin()&&($("#va").onclick=()=>{S.view="admin";render()});render()}
+function render(){S.view==="admin"&&isAdmin()?admin():store();bar();$("#vs")&&$("#vs").classList.toggle("on",!(S.view==="admin"&&isAdmin()));$("#va")&&$("#va").classList.toggle("on",S.view==="admin")}
+function bar(){const n=cartCount(),t=Object.entries(S.cart).reduce((a,[id,q])=>a+q*(S.products.find(p=>p.id===id)?.price||0),0),on=n&&S.view==="store";const tcn=$("#tcn");if(tcn){tcn.textContent=n||"";tcn.classList.toggle("on",!!n);tcn.classList.remove("bump");void tcn.offsetWidth;tcn.classList.add("bump")}
   $("#bar").innerHTML=on?`<div class="bar"><div><b>${n} item${n>1?"s":""}</b><div class="mut">${rs(t)}</div></div><button class="btn p" id="vc">View cart</button></div>`:"";on&&($("#vc").onclick=cart)}
 function store(){
   const cats=[...new Set(S.products.map(p=>p.category).filter(Boolean))];
-  $("#main").innerHTML=`<div class="hero"><h1>Genuine mobile spare parts,<br>wholesale rates</h1><p class="mut" style="margin:0">Displays, batteries, ports and more. Pay online and we arrange delivery.</p><input id="q" placeholder="Search parts…" value="${esc(S.q||"")}"></div>
+  $("#main").innerHTML=`<div class="hero"><span class="pill">⚡ Wholesale rates · Registered shops only</span><h1>Genuine mobile spare parts,<br>wholesale rates</h1><p class="mut" style="margin:0">Displays, batteries, ports and more. Pay online and we arrange delivery.</p><input id="q" placeholder="Search parts…" value="${esc(S.q||"")}"></div>
   <div class="chips">${["All",...cats].map(c=>`<button class="chip ${(S.cat||"All")===c?"on":""}" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div><div id="gr"></div>`;
   $("#q").oninput=e=>{S.q=e.target.value;grid()};
   document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{S.cat=b.dataset.c;store()});grid()}
 function grid(){
   const q=(S.q||"").toLowerCase(),c=S.cat&&S.cat!=="All"?S.cat:null,L=S.products.filter(p=>(!c||p.category===c)&&(!q||p.name.toLowerCase().includes(q)));
-  $("#gr").innerHTML=L.length?`<div class="grid">${L.map(p=>{const n=S.cart[p.id]||0;return `<div class="prod"><img src="${esc(p.imageUrl||ph(p.name))}" alt="" loading="lazy"><div class="pb">${p.category?`<span class="tag" style="align-self:flex-start">${esc(p.category)}</span>`:""}<div class="pn">${esc(p.name)}</div><div class="price">${rs(p.price)}</div><div class="${p.stock>0?"in":"out"} sm">${p.stock>0?"In stock":"Out of stock"}</div>${p.stock<=0?'<button class="btn" disabled>Unavailable</button>':n?`<div class="step"><button class="btn" data-gm="${p.id}">−</button><b>${n}</b><button class="btn" data-gp="${p.id}">+</button></div>`:`<button class="btn p" data-ga="${p.id}">Add to cart</button>`}</div></div>`}).join("")}</div>`:`<p class="mut" style="margin:30px 0">${S.products.length?"No parts match your search.":"No products yet."+(isAdmin()?" Open Admin → Products to add some.":"")}</p>`;
+  $("#gr").innerHTML=L.length?`<div class="grid">${L.map(p=>{const n=S.cart[p.id]||0;return `<div class="prod"><img src="${esc(p.imageUrl||ph(p.name))}" alt="" loading="lazy"><div class="pb">${p.category?`<span class="tag" style="align-self:flex-start">${esc(p.category)}</span>`:""}<div class="pn">${esc(p.name)}</div><div class="price">${rs(p.price)}</div><div class="${p.stock>0?"in":"out"} sm">${p.stock>0?"In stock":"Out of stock"}</div>${p.stock<=0?'<button class="btn" disabled>Unavailable</button>':n?`<div class="step"><button class="btn" data-gm="${p.id}">−</button><b>${n}</b><button class="btn" data-gp="${p.id}">+</button></div>`:`<button class="btn p" data-ga="${p.id}">＋ Add to cart</button>`}</div></div>`}).join("")}</div>`:`<p class="mut" style="margin:30px 0">${S.products.length?"No parts match your search.":"No products yet."+(isAdmin()?" Open Admin → Products to add some.":"")}</p>`;
   document.querySelectorAll("[data-ga],[data-gp]").forEach(b=>b.onclick=()=>{const id=b.dataset.ga||b.dataset.gp,p=S.products.find(x=>x.id===id);if((S.cart[id]||0)<p.stock)S.cart[id]=(S.cart[id]||0)+1;grid();bar()});
   document.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{const id=b.dataset.gm;S.cart[id]--;if(S.cart[id]<1)delete S.cart[id];grid();bar()})}
 
 function cart(){
   const items=Object.entries(S.cart).map(([id,q])=>({p:S.products.find(x=>x.id===id),q})).filter(i=>i.p),total=items.reduce((a,i)=>a+i.p.price*i.q,0);
-  $("#dr").innerHTML=`<div class="drawer"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Your cart</h2><button class="btn" id="x">Close</button></div>
+  $("#dr").innerHTML=`<div class="bd" id="bd"></div><div class="drawer"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Your cart</h2><button class="btn x" id="x" aria-label="Close">✕</button></div>
   ${items.length?items.map(i=>`<div class="row" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)"><div>${esc(i.p.name)}<div class="mut">${rs(i.p.price)} × ${i.q}</div></div><div class="row"><button class="btn" data-m="${i.p.id}">−</button><button class="btn" data-pl="${i.p.id}">+</button></div></div>`).join("")+`
   <h3>Total ${rs(total)}</h3><p class="mut">Delivery details (shipping is arranged offline)</p>
   <input id="n" placeholder="Contact name"><input id="ph" placeholder="Phone" inputmode="tel"><input id="ad" placeholder="Full address"><input id="ci" placeholder="City"><input id="pi" placeholder="Pincode" inputmode="numeric">
   <p class="err" id="e"></p><button class="btn p" id="pay" style="width:100%">Pay ${rs(total)}</button>`:'<p class="mut">Your cart is empty.</p>'}</div>`;
-  $("#x").onclick=()=>$("#dr").innerHTML="";
+  $("#x").onclick=()=>$("#dr").innerHTML="";$("#bd").onclick=()=>$("#dr").innerHTML="";
   document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{const id=b.dataset.m;S.cart[id]--;if(S.cart[id]<1)delete S.cart[id];render();cart()});
   document.querySelectorAll("[data-pl]").forEach(b=>b.onclick=()=>{const id=b.dataset.pl,p=S.products.find(x=>x.id===id);if(S.cart[id]<p.stock)S.cart[id]++;render();cart()});
   items.length&&($("#pay").onclick=async()=>{
@@ -131,7 +215,7 @@ function cart(){
     if(Object.values(sh).some(v=>!v))return $("#e").textContent="Fill in all delivery details.";
     $("#pay").disabled=true;
     try{const ref=await addDoc(collection(db,"orders"),{userId:S.user.uid,email:S.user.email,shopCode:S.profile?.shopCode||"ADMIN",items:items.map(i=>({productId:i.p.id,name:i.p.name,price:i.p.price,qty:i.q})),amount:total,paymentStatus:"PENDING",shipping:sh,createdAt:serverTimestamp()});
-     new Razorpay({key:RAZORPAY_KEY,amount:total,currency:"INR",name:"Spare Parts Wholesale",description:"Order "+ref.id.slice(0,6),prefill:{name:sh.name,email:S.user.email,contact:sh.phone},theme:{color:"#f5ff3d"},
+     new Razorpay({key:RAZORPAY_KEY,amount:total,currency:"INR",name:"Display Wallah",description:"Order "+ref.id.slice(0,6),prefill:{name:sh.name,email:S.user.email,contact:sh.phone},theme:{color:"#f5ff3d"},
       handler:async r=>{await updateDoc(ref,{paymentStatus:"PAID",razorpayPaymentId:r.razorpay_payment_id,paidAt:serverTimestamp()});S.cart={};render();$("#dr").innerHTML='<div class="drawer"><h2>Payment received</h2><p class="mut">Your order is confirmed. We will arrange delivery.</p><button class="btn" id="x">Close</button></div>';$("#x").onclick=()=>$("#dr").innerHTML=""},
       modal:{ondismiss:()=>{$("#pay").disabled=false}}}).open();
     }catch{$("#e").textContent="Could not start payment. Try again.";$("#pay").disabled=false}})}
