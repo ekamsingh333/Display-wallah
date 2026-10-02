@@ -133,6 +133,9 @@ body.sf .card>div[style*="padding:14px"]{background:#f6f7f9!important}
 @keyframes dwSlide{from{transform:translateX(100%)}to{transform:none}}
 @keyframes dwBar{from{transform:translateY(140%);opacity:0}to{transform:none;opacity:1}}
 @media(prefers-reduced-motion:reduce){body.sf *,body.sf *::before{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
+/* Menu visibility fix: keep menu options visible when the drawer opens */
+body.sf .top>.row>.btn,body.sf .top>.row>.tag{opacity:1!important;transform:none!important;visibility:visible!important}
+body.sf.mo .top>.row>.btn,body.sf.mo .top>.row>.tag{opacity:1!important;transform:none!important;visibility:visible!important}
 </style></head><body class="sf">
 <div id="app"></div>
 <script type="module">
