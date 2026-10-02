@@ -2,9 +2,9 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Spare Parts Wholesale</title>
-<style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet"><style>
 :root{--bg:#0b0c10;--panel:#14161c;--line:#262a33;--text:#f4f5f7;--mut:#9aa0ad;--y:#f5ff3d;--g:#55f09a;--r:#ff667d}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px 'DM Sans',system-ui,sans-serif}
 button,input{font:inherit}button{cursor:pointer}
 .wrap{max-width:1100px;margin:auto;padding:0 16px 80px}
 .top{position:sticky;top:0;z-index:5;background:#0b0c10ee;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:12px 16px;gap:8px}
@@ -25,13 +25,24 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;p
 .scroll{overflow-x:auto}.modal{position:fixed;inset:0;background:#000c;display:grid;place-items:center;padding:16px;z-index:20}
 .drawer{position:fixed;right:0;top:0;bottom:0;width:min(420px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:15;padding:18px;overflow:auto}
 .hide{display:none!important}.mono{font-family:ui-monospace,monospace;letter-spacing:.06em}
+
+.logo{font-family:'Space Grotesk';font-size:20px;letter-spacing:-.03em}.logo span{color:var(--y)}
+body{background:radial-gradient(700px 400px at 10% -10%,#f5ff3d14,transparent 60%),var(--bg)}
+.hero{padding:34px 0 8px}.hero h1{font:700 clamp(26px,6vw,42px)/1.1 'Space Grotesk';margin:0 0 10px;letter-spacing:-.03em}
+.hero input{margin-top:14px;padding:14px;border-radius:14px;font-size:16px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:14px 0 4px}.chip{white-space:nowrap;border:1px solid var(--line);background:var(--panel);color:var(--mut);border-radius:99px;padding:8px 15px;font-weight:600}.chip.on{background:var(--y);color:#111;border-color:var(--y)}
+.prod{transition:.15s}.prod:hover{border-color:#4a4f5c}.pb{padding:12px!important;display:flex;flex-direction:column;gap:5px}.pn{font-weight:600;line-height:1.25;min-height:2.5em}.sm{font-size:12px}.price{font-size:18px}
+.step{display:flex;justify-content:space-between;align-items:center;margin-top:6px}.step .btn{padding:8px 16px}
+.bar{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:9;background:#1b1e26;border:1px solid #3a3f4b;border-radius:16px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;max-width:640px;margin:auto;box-shadow:0 12px 40px #000a}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;max-width:520px}.panel h3{margin:0 0 4px}.row2{display:flex;gap:8px}
+label.mut{display:block;margin-top:12px;font-size:13px}input[type=file]{padding:10px}
 </style></head><body>
 <div id="app"></div>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import{getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,onSnapshot,serverTimestamp,getDocs,collection,query,orderBy,writeBatch}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import{getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,onSnapshot,serverTimestamp,getDocs,collection,query,orderBy,writeBatch,deleteDoc}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 /* ====== EDIT THESE ====== */
 const firebaseConfig={apiKey:"AIzaSyD4ahz9H3-5kD7rfqowHt3CAPDCjuKbUv0",authDomain:"display-wala.firebaseapp.com",projectId:"display-wala",appId:"1:788299746317:web:6e37f2fbf512a2847b9944"};
@@ -43,13 +54,15 @@ const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const $=s=>document.querySelector(s),root=$("#app");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const rs=p=>"₹"+(p/100).toLocaleString("en-IN");
-const S={user:null,profile:null,products:[],cart:{},view:"store",tab:"codes",unsub:null};
-const isAdmin=()=>S.user&&S.user.emailVerified&&ADMINS.includes(S.user.email.toLowerCase());
+const S={user:null,profile:null,products:[],cart:{},view:"store",tab:"products",unsub:null,adm:false};
+const isAdmin=()=>S.adm;
+const isOwner=()=>!!S.user&&S.user.emailVerified&&ADMINS.includes(S.user.email.toLowerCase());
 
-onAuthStateChanged(auth,u=>{
-  S.unsub&&S.unsub();S.user=u;S.profile=null;
+onAuthStateChanged(auth,async u=>{
+  S.unsub&&S.unsub();S.user=u;S.profile=null;S.adm=false;
   if(!u)return login();
   root.innerHTML='<div class="center mut">Loading…</div>';
+  if(u.emailVerified){const em=u.email.toLowerCase();S.adm=ADMINS.includes(em)||await getDoc(doc(db,"admins",em)).then(x=>x.exists()).catch(()=>false)}
   S.unsub=onSnapshot(doc(db,"users",u.uid),s=>{
     S.profile=s.exists()?s.data():null;
     if(S.profile?.is_banned)return banned();
@@ -83,16 +96,25 @@ function codeModal(){root.innerHTML=`<div class="modal"><form class="card" id="f
 async function loadProducts(){const s=await getDocs(collection(db,"products"));S.products=s.docs.map(d=>({id:d.id,...d.data()}))}
 const cartCount=()=>Object.values(S.cart).reduce((a,b)=>a+b,0);
 
+const ph=n=>"data:image/svg+xml;utf8,"+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect width='200' height='200' fill='#1b1e26'/><text x='100' y='122' font-size='62' text-anchor='middle' fill='#f5ff3d' font-family='sans-serif' font-weight='700'>${esc((n||"?").slice(0,2).toUpperCase())}</text></svg>`);
 async function shell(){
   try{await loadProducts()}catch{}
-  root.innerHTML=`<div class="top"><b>Spare Parts</b><div class="row"><button class="btn ${isAdmin()?"":"hide"}" id="va">Admin</button><button class="btn" id="vs">Store</button><button class="btn p" id="vc">Cart (<span id="cc">0</span>)</button><button class="btn" id="o">Sign out</button></div></div><div class="wrap" id="main"></div><div id="dr"></div>`;
-  $("#o").onclick=()=>signOut(auth);$("#vs").onclick=()=>{S.view="store";render()};$("#va").onclick=()=>{S.view="admin";render()};$("#vc").onclick=cart;render()}
-
-function render(){$("#cc").textContent=cartCount();S.view==="admin"&&isAdmin()?admin():store()}
-
-function store(){$("#main").innerHTML=S.products.length?`<div class="grid">${S.products.map(p=>`<div class="prod"><img src="${esc(p.imageUrl)}" alt="" loading="lazy"><div><div>${esc(p.name)}</div><div class="price">${rs(p.price)}</div>
-<span class="tag ${p.stock>0?"in":"out"}">${p.stock>0?"In stock ("+p.stock+")":"Out of stock"}</span><br><button class="btn p" style="margin-top:10px;width:100%" data-a="${p.id}" ${p.stock>0?"":"disabled"}>Add to cart</button></div></div>`).join("")}</div>`:'<p class="mut" style="margin-top:30px">No products yet.</p>';
- document.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{const p=S.products.find(x=>x.id===b.dataset.a);if((S.cart[p.id]||0)<p.stock)S.cart[p.id]=(S.cart[p.id]||0)+1;$("#cc").textContent=cartCount()})}
+  root.innerHTML=`<div class="top"><b class="logo">Spare<span>Parts</span></b><div class="row">${isAdmin()?'<button class="btn" id="va">Admin</button>':""}<button class="btn" id="vs">Store</button><button class="btn" id="o">Sign out</button></div></div><div class="wrap" id="main"></div><div id="bar"></div><div id="dr"></div>`;
+  $("#o").onclick=()=>signOut(auth);$("#vs").onclick=()=>{S.view="store";render()};isAdmin()&&($("#va").onclick=()=>{S.view="admin";render()});render()}
+function render(){S.view==="admin"&&isAdmin()?admin():store();bar()}
+function bar(){const n=cartCount(),t=Object.entries(S.cart).reduce((a,[id,q])=>a+q*(S.products.find(p=>p.id===id)?.price||0),0),on=n&&S.view==="store";
+  $("#bar").innerHTML=on?`<div class="bar"><div><b>${n} item${n>1?"s":""}</b><div class="mut">${rs(t)}</div></div><button class="btn p" id="vc">View cart</button></div>`:"";on&&($("#vc").onclick=cart)}
+function store(){
+  const cats=[...new Set(S.products.map(p=>p.category).filter(Boolean))];
+  $("#main").innerHTML=`<div class="hero"><h1>Genuine mobile spare parts,<br>wholesale rates</h1><p class="mut" style="margin:0">Displays, batteries, ports and more. Pay online and we arrange delivery.</p><input id="q" placeholder="Search parts…" value="${esc(S.q||"")}"></div>
+  <div class="chips">${["All",...cats].map(c=>`<button class="chip ${(S.cat||"All")===c?"on":""}" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div><div id="gr"></div>`;
+  $("#q").oninput=e=>{S.q=e.target.value;grid()};
+  document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{S.cat=b.dataset.c;store()});grid()}
+function grid(){
+  const q=(S.q||"").toLowerCase(),c=S.cat&&S.cat!=="All"?S.cat:null,L=S.products.filter(p=>(!c||p.category===c)&&(!q||p.name.toLowerCase().includes(q)));
+  $("#gr").innerHTML=L.length?`<div class="grid">${L.map(p=>{const n=S.cart[p.id]||0;return `<div class="prod"><img src="${esc(p.imageUrl||ph(p.name))}" alt="" loading="lazy"><div class="pb">${p.category?`<span class="tag" style="align-self:flex-start">${esc(p.category)}</span>`:""}<div class="pn">${esc(p.name)}</div><div class="price">${rs(p.price)}</div><div class="${p.stock>0?"in":"out"} sm">${p.stock>0?"In stock":"Out of stock"}</div>${p.stock<=0?'<button class="btn" disabled>Unavailable</button>':n?`<div class="step"><button class="btn" data-gm="${p.id}">−</button><b>${n}</b><button class="btn" data-gp="${p.id}">+</button></div>`:`<button class="btn p" data-ga="${p.id}">Add to cart</button>`}</div></div>`}).join("")}</div>`:`<p class="mut" style="margin:30px 0">${S.products.length?"No parts match your search.":"No products yet."+(isAdmin()?" Open Admin → Products to add some.":"")}</p>`;
+  document.querySelectorAll("[data-ga],[data-gp]").forEach(b=>b.onclick=()=>{const id=b.dataset.ga||b.dataset.gp,p=S.products.find(x=>x.id===id);if((S.cart[id]||0)<p.stock)S.cart[id]=(S.cart[id]||0)+1;grid();bar()});
+  document.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{const id=b.dataset.gm;S.cart[id]--;if(S.cart[id]<1)delete S.cart[id];grid();bar()})}
 
 function cart(){
   const items=Object.entries(S.cart).map(([id,q])=>({p:S.products.find(x=>x.id===id),q})).filter(i=>i.p),total=items.reduce((a,i)=>a+i.p.price*i.q,0);
@@ -115,10 +137,10 @@ function cart(){
     }catch{$("#e").textContent="Could not start payment. Try again.";$("#pay").disabled=false}})}
 
 function admin(){
-  const T=[["codes","Shop codes"],["users","Users"],["orders","Orders"],["products","Products"]];
+  const T=[["products","Products"],["codes","Shop codes"],["users","Users"],["orders","Orders"],...(isOwner()?[["admins","Admins"]]:[])];
   $("#main").innerHTML=`<div class="tabs">${T.map(t=>`<button class="btn ${S.tab===t[0]?"on":""}" data-t="${t[0]}">${t[1]}</button>`).join("")}</div><div id="ab" class="scroll">Loading…</div>`;
   document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{S.tab=b.dataset.t;admin()});
-  ({codes:aCodes,users:aUsers,orders:aOrders,products:aProducts})[S.tab]()}
+  ({codes:aCodes,users:aUsers,orders:aOrders,products:aProducts,admins:aAdmins})[S.tab]()}
 
 const when=t=>t?.toDate?t.toDate().toLocaleString("en-IN"):"";
 async function aCodes(){
@@ -141,11 +163,22 @@ async function aOrders(){
   $("#ab").innerHTML=rows.length?`<table><tr><th>Order</th><th>Items</th><th>Total</th><th>Payment</th><th>Ship to</th></tr>${rows.map(o=>`<tr><td>${o.id.slice(0,6)}<div class="mut">${when(o.createdAt)}</div><div class="mut mono">${esc(o.shopCode)}</div></td><td>${o.items.map(i=>esc(i.name)+" ×"+i.qty).join("<br>")}</td><td>${rs(o.amount)}</td>
   <td class="${o.paymentStatus==="PAID"?"in":"out"}">${o.paymentStatus}<div class="mut">${esc(o.razorpayPaymentId||"")}</div></td><td>${esc(o.shipping.name)}, ${esc(o.shipping.phone)}<br>${esc(o.shipping.address)}, ${esc(o.shipping.city)} ${esc(o.shipping.pincode)}</td></tr>`).join("")}</table>`:'<p class="mut">No orders yet.</p>'}
 
+const SAMPLES=[["iPhone 11 Display (OEM)","Displays",185000,20],["Samsung A12 Battery","Batteries",42000,50],["Type-C Charging Port Flex","Ports",9000,100],["Redmi Note 10 Back Glass","Back Glass",28000,30],["Tempered Glass 9H (pack of 10)","Accessories",15000,80],["Fast Charger 33W","Accessories",35000,40]];
+const shrink=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,500/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.72))};im.onerror=rej;im.src=r.result};r.onerror=rej;r.readAsDataURL(f)});
 async function aProducts(){
   await loadProducts();
-  $("#ab").innerHTML=`<div class="row"><input id="pn" placeholder="Name" style="max-width:200px;margin:0"><input id="pp" type="number" placeholder="Price ₹" style="width:110px;margin:0"><input id="ps" type="number" placeholder="Stock" style="width:90px;margin:0"><input id="pu" placeholder="Image URL" style="max-width:240px;margin:0"><button class="btn p" id="add">Add</button></div>
-  <table style="margin-top:14px"><tr><th>Name</th><th>Price</th><th>Stock</th><th></th></tr>${S.products.map(p=>`<tr><td>${esc(p.name)}</td><td>${rs(p.price)}</td><td><input type="number" value="${p.stock}" data-s="${p.id}" style="width:80px;margin:0"></td><td></td></tr>`).join("")}</table>`;
-  $("#add").onclick=async()=>{const n=$("#pn").value.trim(),p=Math.round(+$("#pp").value*100),s=+$("#ps").value;if(!n||!p)return;
-   await addDoc(collection(db,"products"),{name:n,price:p,stock:s||0,imageUrl:$("#pu").value.trim(),createdAt:serverTimestamp()});aProducts()};
-  document.querySelectorAll("[data-s]").forEach(i=>i.onchange=()=>updateDoc(doc(db,"products",i.dataset.s),{stock:+i.value||0}))}
+  $("#ab").innerHTML=`<div class="panel"><h3>Add product</h3><input id="pn" placeholder="Product name"><div class="row2"><input id="pp" type="number" placeholder="Price ₹"><input id="ps" type="number" placeholder="Stock"></div><input id="pc" list="cl" placeholder="Category (e.g. Displays)"><datalist id="cl">${[...new Set(S.products.map(p=>p.category).filter(Boolean))].map(c=>`<option value="${esc(c)}">`).join("")}</datalist><label class="mut">Photo from gallery (optional)</label><input id="pf" type="file" accept="image/*"><p class="err" id="pe"></p><button class="btn p" id="add">Add product</button>${S.products.length?"":'<button class="btn" id="smp" style="margin-left:8px">Add 6 sample products</button>'}</div>
+  <table style="margin-top:16px"><tr><th></th><th>Product</th><th>Price ₹</th><th>Stock</th><th></th></tr>${S.products.map(p=>`<tr><td><img src="${esc(p.imageUrl||ph(p.name))}" style="width:44px;height:44px;border-radius:8px;object-fit:cover"></td><td>${esc(p.name)}<div class="mut">${esc(p.category||"")}</div></td><td><input type="number" value="${p.price/100}" data-p="${p.id}" style="width:90px;margin:0"></td><td><input type="number" value="${p.stock}" data-s="${p.id}" style="width:70px;margin:0"></td><td><button class="btn d" data-x="${p.id}">Delete</button></td></tr>`).join("")}</table>`;
+  $("#add").onclick=async()=>{const n=$("#pn").value.trim(),pr=Math.round(+$("#pp").value*100),e=$("#pe");if(!n||!pr)return e.textContent="Enter a name and price.";
+    $("#add").disabled=true;try{const f=$("#pf").files[0];await addDoc(collection(db,"products"),{name:n,price:pr,stock:+$("#ps").value||0,category:$("#pc").value.trim(),imageUrl:f?await shrink(f):"",createdAt:serverTimestamp()});aProducts()}catch{e.textContent="Could not add. Check the rules are published.";$("#add").disabled=false}};
+  $("#smp")&&($("#smp").onclick=async()=>{$("#smp").disabled=true;for(const[n,c,p,st]of SAMPLES)await addDoc(collection(db,"products"),{name:n,category:c,price:p,stock:st,imageUrl:"",createdAt:serverTimestamp()});aProducts()});
+  document.querySelectorAll("[data-s]").forEach(i=>i.onchange=()=>updateDoc(doc(db,"products",i.dataset.s),{stock:+i.value||0}));
+  document.querySelectorAll("[data-p]").forEach(i=>i.onchange=()=>updateDoc(doc(db,"products",i.dataset.p),{price:Math.round(+i.value*100)}));
+  document.querySelectorAll("[data-x]").forEach(b=>b.onclick=async()=>{if(confirm("Delete this product?")){await deleteDoc(doc(db,"products",b.dataset.x));aProducts()}})}
+async function aAdmins(){
+  const snap=await getDocs(collection(db,"admins")),rows=snap.docs.map(d=>d.id);
+  $("#ab").innerHTML=`<div class="panel"><h3>Admins</h3><p class="mut">Owner: ${esc(ADMINS.join(", "))}</p><div class="row"><input id="ae" type="email" placeholder="new-admin@gmail.com" style="margin:0;max-width:280px"><button class="btn p" id="aa">Make admin</button></div><p class="err" id="ar"></p></div>
+  <table style="margin-top:14px">${rows.map(e=>`<tr><td>${esc(e)}</td><td><button class="btn d" data-r="${esc(e)}">Remove</button></td></tr>`).join("")||'<tr><td class="mut">No extra admins yet.</td></tr>'}</table>`;
+  $("#aa").onclick=async()=>{const e=$("#ae").value.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(e))return $("#ar").textContent="Enter a valid email.";await setDoc(doc(db,"admins",e),{email:e,addedBy:S.user.email,createdAt:serverTimestamp()});aAdmins()};
+  document.querySelectorAll("[data-r]").forEach(b=>b.onclick=async()=>{await deleteDoc(doc(db,"admins",b.dataset.r));aAdmins()})}
 </script></body></html>
