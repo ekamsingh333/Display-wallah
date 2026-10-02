@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Spare Parts Wholesale</title>
+<style>
+:root{--bg:#0b0c10;--panel:#14161c;--line:#262a33;--text:#f4f5f7;--mut:#9aa0ad;--y:#f5ff3d;--g:#55f09a;--r:#ff667d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,sans-serif}
+button,input{font:inherit}button{cursor:pointer}
+.wrap{max-width:1100px;margin:auto;padding:0 16px 80px}
+.top{position:sticky;top:0;z-index:5;background:#0b0c10ee;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:12px 16px;gap:8px}
+.top b{font-size:17px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:#1b1e26;color:var(--text);border-radius:10px;padding:10px 14px;font-weight:600}
+.btn.p{background:var(--y);color:#111;border-color:var(--y)}.btn.d{color:var(--r)}.btn:disabled{opacity:.45}
+.center{min-height:100vh;display:grid;place-items:center;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;width:100%;max-width:380px}
+.card h2{margin:0 0 8px}.mut{color:var(--mut)}.err{color:var(--r);margin:10px 0 0;min-height:18px}
+input{width:100%;background:#0e1015;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:12px;margin-top:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:18px}
+.prod{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prod img{width:100%;aspect-ratio:1;object-fit:cover;background:#1b1e26;display:block}
+.prod div{padding:12px}.price{font-weight:700;color:var(--y)}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;background:#1b1e26}.in{color:var(--g)}.out{color:var(--r)}
+.tabs{display:flex;gap:6px;margin:18px 0;flex-wrap:wrap}.tabs .btn.on{background:var(--y);color:#111}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.scroll{overflow-x:auto}.modal{position:fixed;inset:0;background:#000c;display:grid;place-items:center;padding:16px;z-index:20}
+.drawer{position:fixed;right:0;top:0;bottom:0;width:min(420px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:15;padding:18px;overflow:auto}
+.hide{display:none!important}.mono{font-family:ui-monospace,monospace;letter-spacing:.06em}
+</style></head><body>
+<div id="app"></div>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import{getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import{getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,onSnapshot,serverTimestamp,getDocs,collection,query,orderBy,writeBatch}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+/* ====== EDIT THESE ====== */
+const firebaseConfig={apiKey:"AIzaSyD4ahz9H3-5kD7rfqowHt3CAPDCjuKbUv0",authDomain:"display-wala.firebaseapp.com",projectId:"display-wala",appId:"1:788299746317:web:6e37f2fbf512a2847b9944"};
+const ADMINS=["ekamsinghlehal@gmail.com"];          // must match firestore.rules
+const RAZORPAY_KEY="rzp_test_XXXXXXXXXXXX";          // Razorpay Key ID
+/* ======================== */
+
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const $=s=>document.querySelector(s),root=$("#app");
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const rs=p=>"₹"+(p/100).toLocaleString("en-IN");
+const S={user:null,profile:null,products:[],cart:{},view:"store",tab:"codes",unsub:null};
+const isAdmin=()=>S.user&&S.user.emailVerified&&ADMINS.includes(S.user.email.toLowerCase());
+
+onAuthStateChanged(auth,u=>{
+  S.unsub&&S.unsub();S.user=u;S.profile=null;
+  if(!u)return login();
+  root.innerHTML='<div class="center mut">Loading…</div>';
+  S.unsub=onSnapshot(doc(db,"users",u.uid),s=>{
+    S.profile=s.exists()?s.data():null;
+    if(S.profile?.is_banned)return banned();
+    if(S.profile||isAdmin())return shell();
+    codeModal();
+  },()=>login("Could not load your account."));
+});
+
+function login(msg=""){root.innerHTML=`<div class="center"><div class="card"><h2>Spare Parts Wholesale</h2><p class="mut">For registered mobile repair shops. Sign in to continue.</p>
+<button class="btn p" id="g" style="width:100%;margin-top:14px">Login with Google</button><p class="err">${msg}</p></div></div>`;
+ $("#g").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){if(e.code!=="auth/popup-closed-by-user")$(".err").textContent="Login failed. Try again."}}}
+
+function banned(){root.innerHTML=`<div class="center"><div class="card" style="text-align:center"><h2 style="color:var(--r)">Your account has been suspended</h2><p class="mut">${esc(S.user.email)} can't place orders. Contact us to resolve this.</p><button class="btn" id="o">Sign out</button></div></div>`;$("#o").onclick=()=>signOut(auth)}
+
+function codeModal(){root.innerHTML=`<div class="modal"><form class="card" id="f"><h2>Enter your shop code</h2><p class="mut">Signed in as ${esc(S.user.email)}. The code links to this Google account permanently and works once.</p>
+<input id="c" class="mono" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off" style="text-align:center;font-size:18px"><p class="err" id="e"></p>
+<button class="btn p" id="s" style="width:100%">Verify code</button><button type="button" class="btn" id="o" style="width:100%;margin-top:8px">Use a different account</button></form></div>`;
+ $("#o").onclick=()=>signOut(auth);
+ $("#c").oninput=e=>{let v=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8);e.target.value=v.length>4?v.slice(0,4)+"-"+v.slice(4):v};
+ $("#f").onsubmit=async e=>{e.preventDefault();const code=$("#c").value,err=$("#e");if(code.length<9)return err.textContent="Enter the full 8-character code.";
+  $("#s").disabled=true;err.textContent="";
+  try{const ref=doc(db,"shopCodes",code),snap=await getDoc(ref);
+   if(!snap.exists())throw"This shop code doesn't exist.";
+   if(snap.data().status!=="unused")throw"This code has already been used.";
+   const b=writeBatch(db);
+   b.update(ref,{status:"used",usedBy:S.user.uid,usedByEmail:S.user.email,usedAt:serverTimestamp()});
+   b.set(doc(db,"users",S.user.uid),{uid:S.user.uid,email:S.user.email,displayName:S.user.displayName||"",shopCode:code,is_verified:true,is_banned:false,createdAt:serverTimestamp()});
+   await b.commit();
+  }catch(x){err.textContent=typeof x==="string"?x:"Could not verify. Try again.";$("#s").disabled=false}}}
+
+async function loadProducts(){const s=await getDocs(collection(db,"products"));S.products=s.docs.map(d=>({id:d.id,...d.data()}))}
+const cartCount=()=>Object.values(S.cart).reduce((a,b)=>a+b,0);
+
+async function shell(){
+  try{await loadProducts()}catch{}
+  root.innerHTML=`<div class="top"><b>Spare Parts</b><div class="row"><button class="btn ${isAdmin()?"":"hide"}" id="va">Admin</button><button class="btn" id="vs">Store</button><button class="btn p" id="vc">Cart (<span id="cc">0</span>)</button><button class="btn" id="o">Sign out</button></div></div><div class="wrap" id="main"></div><div id="dr"></div>`;
+  $("#o").onclick=()=>signOut(auth);$("#vs").onclick=()=>{S.view="store";render()};$("#va").onclick=()=>{S.view="admin";render()};$("#vc").onclick=cart;render()}
+
+function render(){$("#cc").textContent=cartCount();S.view==="admin"&&isAdmin()?admin():store()}
+
+function store(){$("#main").innerHTML=S.products.length?`<div class="grid">${S.products.map(p=>`<div class="prod"><img src="${esc(p.imageUrl)}" alt="" loading="lazy"><div><div>${esc(p.name)}</div><div class="price">${rs(p.price)}</div>
+<span class="tag ${p.stock>0?"in":"out"}">${p.stock>0?"In stock ("+p.stock+")":"Out of stock"}</span><br><button class="btn p" style="margin-top:10px;width:100%" data-a="${p.id}" ${p.stock>0?"":"disabled"}>Add to cart</button></div></div>`).join("")}</div>`:'<p class="mut" style="margin-top:30px">No products yet.</p>';
+ document.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{const p=S.products.find(x=>x.id===b.dataset.a);if((S.cart[p.id]||0)<p.stock)S.cart[p.id]=(S.cart[p.id]||0)+1;$("#cc").textContent=cartCount()})}
+
+function cart(){
+  const items=Object.entries(S.cart).map(([id,q])=>({p:S.products.find(x=>x.id===id),q})).filter(i=>i.p),total=items.reduce((a,i)=>a+i.p.price*i.q,0);
+  $("#dr").innerHTML=`<div class="drawer"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Your cart</h2><button class="btn" id="x">Close</button></div>
+  ${items.length?items.map(i=>`<div class="row" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)"><div>${esc(i.p.name)}<div class="mut">${rs(i.p.price)} × ${i.q}</div></div><div class="row"><button class="btn" data-m="${i.p.id}">−</button><button class="btn" data-pl="${i.p.id}">+</button></div></div>`).join("")+`
+  <h3>Total ${rs(total)}</h3><p class="mut">Delivery details (shipping is arranged offline)</p>
+  <input id="n" placeholder="Contact name"><input id="ph" placeholder="Phone" inputmode="tel"><input id="ad" placeholder="Full address"><input id="ci" placeholder="City"><input id="pi" placeholder="Pincode" inputmode="numeric">
+  <p class="err" id="e"></p><button class="btn p" id="pay" style="width:100%">Pay ${rs(total)}</button>`:'<p class="mut">Your cart is empty.</p>'}</div>`;
+  $("#x").onclick=()=>$("#dr").innerHTML="";
+  document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{const id=b.dataset.m;S.cart[id]--;if(S.cart[id]<1)delete S.cart[id];render();cart()});
+  document.querySelectorAll("[data-pl]").forEach(b=>b.onclick=()=>{const id=b.dataset.pl,p=S.products.find(x=>x.id===id);if(S.cart[id]<p.stock)S.cart[id]++;render();cart()});
+  items.length&&($("#pay").onclick=async()=>{
+    const sh={name:$("#n").value.trim(),phone:$("#ph").value.trim(),address:$("#ad").value.trim(),city:$("#ci").value.trim(),pincode:$("#pi").value.trim()};
+    if(Object.values(sh).some(v=>!v))return $("#e").textContent="Fill in all delivery details.";
+    $("#pay").disabled=true;
+    try{const ref=await addDoc(collection(db,"orders"),{userId:S.user.uid,email:S.user.email,shopCode:S.profile?.shopCode||"ADMIN",items:items.map(i=>({productId:i.p.id,name:i.p.name,price:i.p.price,qty:i.q})),amount:total,paymentStatus:"PENDING",shipping:sh,createdAt:serverTimestamp()});
+     new Razorpay({key:RAZORPAY_KEY,amount:total,currency:"INR",name:"Spare Parts Wholesale",description:"Order "+ref.id.slice(0,6),prefill:{name:sh.name,email:S.user.email,contact:sh.phone},theme:{color:"#f5ff3d"},
+      handler:async r=>{await updateDoc(ref,{paymentStatus:"PAID",razorpayPaymentId:r.razorpay_payment_id,paidAt:serverTimestamp()});S.cart={};render();$("#dr").innerHTML='<div class="drawer"><h2>Payment received</h2><p class="mut">Your order is confirmed. We will arrange delivery.</p><button class="btn" id="x">Close</button></div>';$("#x").onclick=()=>$("#dr").innerHTML=""},
+      modal:{ondismiss:()=>{$("#pay").disabled=false}}}).open();
+    }catch{$("#e").textContent="Could not start payment. Try again.";$("#pay").disabled=false}})}
+
+function admin(){
+  const T=[["codes","Shop codes"],["users","Users"],["orders","Orders"],["products","Products"]];
+  $("#main").innerHTML=`<div class="tabs">${T.map(t=>`<button class="btn ${S.tab===t[0]?"on":""}" data-t="${t[0]}">${t[1]}</button>`).join("")}</div><div id="ab" class="scroll">Loading…</div>`;
+  document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{S.tab=b.dataset.t;admin()});
+  ({codes:aCodes,users:aUsers,orders:aOrders,products:aProducts})[S.tab]()}
+
+const when=t=>t?.toDate?t.toDate().toLocaleString("en-IN"):"";
+async function aCodes(){
+  const snap=await getDocs(collection(db,"shopCodes")),rows=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  $("#ab").innerHTML=`<div class="row"><input id="cn" type="number" min="1" max="50" value="1" style="width:90px;margin:0"><input id="nt" placeholder="Note (shop name)" style="max-width:240px;margin:0"><button class="btn p" id="gen">Generate</button></div>
+  <table style="margin-top:14px"><tr><th>Code</th><th>Status</th><th>Used by</th><th></th></tr>${rows.map(c=>`<tr><td class="mono">${esc(c.code)}<div class="mut">${esc(c.note||"")}</div></td><td>${c.status}</td><td>${esc(c.usedByEmail||"")}</td><td><button class="btn" data-cp="${esc(c.code)}">Copy</button></td></tr>`).join("")}</table>`;
+  $("#gen").onclick=async()=>{const A="ABCDEFGHJKMNPQRSTUVWXYZ23456789",n=Math.min(Math.max(+$("#cn").value||1,1),50);$("#gen").disabled=true;
+   for(let i=0;i<n;i++){const r=crypto.getRandomValues(new Uint32Array(8)),s=[...r].map(x=>A[x%A.length]).join(""),code=s.slice(0,4)+"-"+s.slice(4);
+    await setDoc(doc(db,"shopCodes",code),{code,status:"unused",note:$("#nt").value.trim(),createdAt:serverTimestamp(),usedBy:null,usedByEmail:null,usedAt:null})}aCodes()};
+  document.querySelectorAll("[data-cp]").forEach(b=>b.onclick=()=>{navigator.clipboard.writeText(b.dataset.cp);b.textContent="Copied"})}
+
+async function aUsers(){
+  const snap=await getDocs(collection(db,"users")),rows=snap.docs.map(d=>d.data());
+  $("#ab").innerHTML=`<table><tr><th>User</th><th>Shop code</th><th>Status</th><th></th></tr>${rows.map(u=>`<tr><td>${esc(u.displayName)}<div class="mut">${esc(u.email)}</div></td><td class="mono">${esc(u.shopCode)}</td><td class="${u.is_banned?"out":"in"}">${u.is_banned?"Banned":"Active"}</td>
+  <td><button class="btn ${u.is_banned?"":"d"}" data-b="${u.uid}" data-v="${u.is_banned?0:1}">${u.is_banned?"Unban":"Ban"}</button></td></tr>`).join("")}</table>`;
+  document.querySelectorAll("[data-b]").forEach(b=>b.onclick=async()=>{await updateDoc(doc(db,"users",b.dataset.b),{is_banned:b.dataset.v==="1"});aUsers()})}
+
+async function aOrders(){
+  const snap=await getDocs(query(collection(db,"orders"),orderBy("createdAt","desc"))),rows=snap.docs.map(d=>({id:d.id,...d.data()}));
+  $("#ab").innerHTML=rows.length?`<table><tr><th>Order</th><th>Items</th><th>Total</th><th>Payment</th><th>Ship to</th></tr>${rows.map(o=>`<tr><td>${o.id.slice(0,6)}<div class="mut">${when(o.createdAt)}</div><div class="mut mono">${esc(o.shopCode)}</div></td><td>${o.items.map(i=>esc(i.name)+" ×"+i.qty).join("<br>")}</td><td>${rs(o.amount)}</td>
+  <td class="${o.paymentStatus==="PAID"?"in":"out"}">${o.paymentStatus}<div class="mut">${esc(o.razorpayPaymentId||"")}</div></td><td>${esc(o.shipping.name)}, ${esc(o.shipping.phone)}<br>${esc(o.shipping.address)}, ${esc(o.shipping.city)} ${esc(o.shipping.pincode)}</td></tr>`).join("")}</table>`:'<p class="mut">No orders yet.</p>'}
+
+async function aProducts(){
+  await loadProducts();
+  $("#ab").innerHTML=`<div class="row"><input id="pn" placeholder="Name" style="max-width:200px;margin:0"><input id="pp" type="number" placeholder="Price ₹" style="width:110px;margin:0"><input id="ps" type="number" placeholder="Stock" style="width:90px;margin:0"><input id="pu" placeholder="Image URL" style="max-width:240px;margin:0"><button class="btn p" id="add">Add</button></div>
+  <table style="margin-top:14px"><tr><th>Name</th><th>Price</th><th>Stock</th><th></th></tr>${S.products.map(p=>`<tr><td>${esc(p.name)}</td><td>${rs(p.price)}</td><td><input type="number" value="${p.stock}" data-s="${p.id}" style="width:80px;margin:0"></td><td></td></tr>`).join("")}</table>`;
+  $("#add").onclick=async()=>{const n=$("#pn").value.trim(),p=Math.round(+$("#pp").value*100),s=+$("#ps").value;if(!n||!p)return;
+   await addDoc(collection(db,"products"),{name:n,price:p,stock:s||0,imageUrl:$("#pu").value.trim(),createdAt:serverTimestamp()});aProducts()};
+  document.querySelectorAll("[data-s]").forEach(i=>i.onchange=()=>updateDoc(doc(db,"products",i.dataset.s),{stock:+i.value||0}))}
+</script></body></html>
