@@ -38,7 +38,6 @@ body{background:radial-gradient(700px 400px at 10% -10%,#f5ff3d14,transparent 60
 label.mut{display:block;margin-top:12px;font-size:13px}input[type=file]{padding:10px}
 </style></head><body>
 <div id="app"></div>
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
@@ -56,52 +55,58 @@ const rs=p=>"₹"+(p/100).toLocaleString("en-IN");
 const S={user:null,profile:null,products:[],cart:{},view:"store",tab:"products",unsub:null,adm:false};
 const isAdmin=()=>S.adm;
 const isOwner=()=>!!S.user&&S.user.emailVerified&&ADMINS.includes(S.user.email.toLowerCase());
+const OFF=50,isShop=()=>!!S.profile&&(S.profile.type==="shop"||(!S.profile.type&&!!S.profile.shopCode)),sp=p=>isShop()?Math.round(p*(100-OFF)/100):p;
+const priceHtml=p=>isShop()?`<div class="price">${rs(sp(p))} <s class="mut sm">${rs(p)}</s></div>`:`<div class="price">${rs(p)}</div>`;
 
 onAuthStateChanged(auth,async u=>{
   S.unsub&&S.unsub();S.user=u;S.profile=null;S.adm=false;
-  if(!u)return login();
+  if(!u){const m=S.lm||"";S.lm="";return login(m)}
   root.innerHTML='<div class="center mut">Loading…</div>';
   if(u.emailVerified){const em=u.email.toLowerCase();S.adm=ADMINS.includes(em)||await getDoc(doc(db,"admins",em)).then(x=>x.exists()).catch(()=>false)}
+  const pc=S.pc||"";S.pc="";
+  try{const ex=await getDoc(doc(db,"users",u.uid));if(!ex.exists()&&!isAdmin())await makeProfile(u,pc)}
+  catch(x){S.lm=typeof x==="string"?x:"Could not sign you in. Try again.";return signOut(auth)}
   S.unsub=onSnapshot(doc(db,"users",u.uid),s=>{
     S.profile=s.exists()?s.data():null;
     if(S.profile?.is_banned)return banned();
     if(S.profile||isAdmin())return shell();
-    codeModal();
+    login("Could not load your account.")
   },()=>login("Could not load your account."));
 });
 
-function login(msg=""){root.innerHTML=`<div class="center"><div class="card"><h2>Spare Parts Wholesale</h2><p class="mut">For registered mobile repair shops. Sign in to continue.</p>
-<button class="btn p" id="g" style="width:100%;margin-top:14px">Login with Google</button><p class="err">${msg}</p></div></div>`;
- $("#g").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){if(e.code!=="auth/popup-closed-by-user")$(".err").textContent="Login failed. Try again."}}}
+const fmtCode=e=>{let v=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8);e.target.value=v.length>4?v.slice(0,4)+"-"+v.slice(4):v};
+function login(msg=""){root.innerHTML=`<div class="center"><div class="card"><h2>Spare Parts Wholesale</h2><p class="mut">Sign in to start shopping.</p>
+<button class="btn p" id="g" style="width:100%;margin-top:14px">Login with Google</button>
+<button class="btn" id="so" style="width:100%;margin-top:10px;background:none">Are you a shop owner? <span class="mut">(optional)</span></button>
+<div id="sc" class="hide"><input id="c" class="mono" placeholder="Shop code XXXX-XXXX" maxlength="9" autocomplete="off" style="text-align:center;font-size:18px"><p class="mut sm" style="margin:8px 0 0">Shop owners get 50% off on everything. Enter your shop code, then tap Login with Google.</p></div><p class="err">${esc(msg)}</p></div></div>`;
+ $("#c").oninput=fmtCode;$("#so").onclick=()=>$("#sc").classList.toggle("hide");
+ $("#g").onclick=async()=>{const err=$(".err"),shop=!$("#sc").classList.contains("hide"),code=shop?$("#c").value:"";err.textContent="";
+  if(shop&&code.length<9)return err.textContent="Enter the full 8-character shop code, or close the shop owner box.";
+  S.pc=code;try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){S.pc="";if(e.code!=="auth/popup-closed-by-user")err.textContent="Login failed. Try again."}}}
+async function makeProfile(u,code){
+  const b=writeBatch(db);
+  if(code){const ref=doc(db,"shopCodes",code),s=await getDoc(ref);
+    if(!s.exists())throw"This shop code doesn't exist.";
+    if(s.data().status!=="unused")throw"This code has already been used.";
+    b.update(ref,{status:"used",usedBy:u.uid,usedByEmail:u.email,usedAt:serverTimestamp()})}
+  b.set(doc(db,"users",u.uid),{uid:u.uid,email:u.email,displayName:u.displayName||"",shopCode:code||"",type:code?"shop":"customer",is_verified:true,is_banned:false,createdAt:serverTimestamp()});
+  await b.commit()}
 
 function banned(){root.innerHTML=`<div class="center"><div class="card" style="text-align:center"><h2 style="color:var(--r)">Your account has been suspended</h2><p class="mut">${esc(S.user.email)} can't place orders. Contact us to resolve this.</p><button class="btn" id="o">Sign out</button></div></div>`;$("#o").onclick=()=>signOut(auth)}
 
-function codeModal(){root.innerHTML=`<div class="modal"><form class="card" id="f"><h2>Enter your shop code</h2><p class="mut">Signed in as ${esc(S.user.email)}. The code links to this Google account permanently and works once.</p>
-<input id="c" class="mono" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off" style="text-align:center;font-size:18px"><p class="err" id="e"></p>
-<button class="btn p" id="s" style="width:100%">Verify code</button><button type="button" class="btn" id="o" style="width:100%;margin-top:8px">Use a different account</button></form></div>`;
- $("#o").onclick=()=>signOut(auth);
- $("#c").oninput=e=>{let v=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8);e.target.value=v.length>4?v.slice(0,4)+"-"+v.slice(4):v};
- $("#f").onsubmit=async e=>{e.preventDefault();const code=$("#c").value,err=$("#e");if(code.length<9)return err.textContent="Enter the full 8-character code.";
-  $("#s").disabled=true;err.textContent="";
-  try{const ref=doc(db,"shopCodes",code),snap=await getDoc(ref);
-   if(!snap.exists())throw"This shop code doesn't exist.";
-   if(snap.data().status!=="unused")throw"This code has already been used.";
-   const b=writeBatch(db);
-   b.update(ref,{status:"used",usedBy:S.user.uid,usedByEmail:S.user.email,usedAt:serverTimestamp()});
-   b.set(doc(db,"users",S.user.uid),{uid:S.user.uid,email:S.user.email,displayName:S.user.displayName||"",shopCode:code,is_verified:true,is_banned:false,createdAt:serverTimestamp()});
-   await b.commit();
-  }catch(x){err.textContent=typeof x==="string"?x:"Could not verify. Try again.";$("#s").disabled=false}}}
 
 async function loadProducts(){const s=await getDocs(collection(db,"products"));S.products=s.docs.map(d=>({id:d.id,...d.data()}))}
 const cartCount=()=>Object.values(S.cart).reduce((a,b)=>a+b,0);
 
 const ph=n=>"data:image/svg+xml;utf8,"+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect width='200' height='200' fill='#1b1e26'/><text x='100' y='122' font-size='62' text-anchor='middle' fill='#f5ff3d' font-family='sans-serif' font-weight='700'>${esc((n||"?").slice(0,2).toUpperCase())}</text></svg>`);
+const PAY=new URLSearchParams(location.search).get("pay");if(PAY)history.replaceState(null,"",location.pathname);
+function payMsg(){if(!PAY||S.pm)return;S.pm=1;const ok=PAY==="success";$("#dr").innerHTML=`<div class="drawer"><h2 class="${ok?"in":"out"}">${ok?"Payment received":"Payment not confirmed"}</h2><p class="mut">${ok?"Your order is confirmed. We will arrange delivery.":"We could not confirm your payment, so no order was placed. If money was deducted, contact us."}</p><button class="btn" id="x">Close</button></div>`;$("#x").onclick=()=>$("#dr").innerHTML=""}
 async function shell(){
   try{await loadProducts()}catch{}
-  root.innerHTML=`<div class="top"><b class="logo">Spare<span>Parts</span></b><div class="row">${isAdmin()?'<button class="btn" id="va">Admin</button>':""}<button class="btn" id="vs">Store</button><button class="btn" id="o">Sign out</button></div></div><div class="wrap" id="main"></div><div id="bar"></div><div id="dr"></div>`;
-  $("#o").onclick=()=>signOut(auth);$("#vs").onclick=()=>{S.view="store";render()};isAdmin()&&($("#va").onclick=()=>{S.view="admin";render()});render()}
+  root.innerHTML=`<div class="top"><b class="logo">Spare<span>Parts</span></b><div class="row">${isShop()?'<span class="tag in">Shop owner · 50% off</span>':""}${isAdmin()?'<button class="btn" id="va">Admin</button>':""}<button class="btn" id="vs">Store</button><button class="btn" id="o">Sign out</button></div></div><div class="wrap" id="main"></div><div id="bar"></div><div id="dr"></div>`;
+  $("#o").onclick=()=>signOut(auth);$("#vs").onclick=()=>{S.view="store";render()};isAdmin()&&($("#va").onclick=()=>{S.view="admin";render()});render();payMsg()}
 function render(){S.view==="admin"&&isAdmin()?admin():store();bar()}
-function bar(){const n=cartCount(),t=Object.entries(S.cart).reduce((a,[id,q])=>a+q*(S.products.find(p=>p.id===id)?.price||0),0),on=n&&S.view==="store";
+function bar(){const n=cartCount(),t=Object.entries(S.cart).reduce((a,[id,q])=>a+q*sp(S.products.find(p=>p.id===id)?.price||0),0),on=n&&S.view==="store";
   $("#bar").innerHTML=on?`<div class="bar"><div><b>${n} item${n>1?"s":""}</b><div class="mut">${rs(t)}</div></div><button class="btn p" id="vc">View cart</button></div>`:"";on&&($("#vc").onclick=cart)}
 function store(){
   const cats=[...new Set(S.products.map(p=>p.category).filter(Boolean))];
@@ -111,14 +116,14 @@ function store(){
   document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{S.cat=b.dataset.c;store()});grid()}
 function grid(){
   const q=(S.q||"").toLowerCase(),c=S.cat&&S.cat!=="All"?S.cat:null,L=S.products.filter(p=>(!c||p.category===c)&&(!q||p.name.toLowerCase().includes(q)));
-  $("#gr").innerHTML=L.length?`<div class="grid">${L.map(p=>{const n=S.cart[p.id]||0;return `<div class="prod"><img src="${esc(p.imageUrl||ph(p.name))}" alt="" loading="lazy"><div class="pb">${p.category?`<span class="tag" style="align-self:flex-start">${esc(p.category)}</span>`:""}<div class="pn">${esc(p.name)}</div><div class="price">${rs(p.price)}</div><div class="${p.stock>0?"in":"out"} sm">${p.stock>0?"In stock":"Out of stock"}</div>${p.stock<=0?'<button class="btn" disabled>Unavailable</button>':n?`<div class="step"><button class="btn" data-gm="${p.id}">−</button><b>${n}</b><button class="btn" data-gp="${p.id}">+</button></div>`:`<button class="btn p" data-ga="${p.id}">Add to cart</button>`}</div></div>`}).join("")}</div>`:`<p class="mut" style="margin:30px 0">${S.products.length?"No parts match your search.":"No products yet."+(isAdmin()?" Open Admin → Products to add some.":"")}</p>`;
+  $("#gr").innerHTML=L.length?`<div class="grid">${L.map(p=>{const n=S.cart[p.id]||0;return `<div class="prod"><img src="${esc(p.imageUrl||ph(p.name))}" alt="" loading="lazy"><div class="pb">${p.category?`<span class="tag" style="align-self:flex-start">${esc(p.category)}</span>`:""}<div class="pn">${esc(p.name)}</div>${priceHtml(p.price)}<div class="${p.stock>0?"in":"out"} sm">${p.stock>0?"In stock":"Out of stock"}</div>${p.stock<=0?'<button class="btn" disabled>Unavailable</button>':n?`<div class="step"><button class="btn" data-gm="${p.id}">−</button><b>${n}</b><button class="btn" data-gp="${p.id}">+</button></div>`:`<button class="btn p" data-ga="${p.id}">Add to cart</button>`}</div></div>`}).join("")}</div>`:`<p class="mut" style="margin:30px 0">${S.products.length?"No parts match your search.":"No products yet."+(isAdmin()?" Open Admin → Products to add some.":"")}</p>`;
   document.querySelectorAll("[data-ga],[data-gp]").forEach(b=>b.onclick=()=>{const id=b.dataset.ga||b.dataset.gp,p=S.products.find(x=>x.id===id);if((S.cart[id]||0)<p.stock)S.cart[id]=(S.cart[id]||0)+1;grid();bar()});
   document.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{const id=b.dataset.gm;S.cart[id]--;if(S.cart[id]<1)delete S.cart[id];grid();bar()})}
 
 function cart(){S.sh=S.sh||{};
-  const items=Object.entries(S.cart).map(([id,q])=>({p:S.products.find(x=>x.id===id),q})).filter(i=>i.p),total=items.reduce((a,i)=>a+i.p.price*i.q,0);
+  const items=Object.entries(S.cart).map(([id,q])=>({p:S.products.find(x=>x.id===id),q})).filter(i=>i.p),total=items.reduce((a,i)=>a+sp(i.p.price)*i.q,0);
   $("#dr").innerHTML=`<div class="drawer"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Your cart</h2><button class="btn" id="x">Close</button></div>
-  ${items.length?items.map(i=>`<div class="row" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)"><div>${esc(i.p.name)}<div class="mut">${rs(i.p.price)} × ${i.q}</div></div><div class="row"><button class="btn" data-m="${i.p.id}">−</button><button class="btn" data-pl="${i.p.id}">+</button></div></div>`).join("")+`
+  ${items.length?items.map(i=>`<div class="row" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)"><div>${esc(i.p.name)}<div class="mut">${rs(sp(i.p.price))} × ${i.q}</div></div><div class="row"><button class="btn" data-m="${i.p.id}">−</button><button class="btn" data-pl="${i.p.id}">+</button></div></div>`).join("")+`
   <div class="row" style="justify-content:space-between"><span class="mut">Items</span><span>${rs(total)}</span></div><div class="row" id="dcr" style="justify-content:space-between;margin-top:6px;display:none"><span class="mut">Discount <span id="dct"></span></span><span id="dc" style="color:var(--g)"></span></div><div class="row" style="justify-content:space-between;margin-top:6px"><span class="mut">Delivery <span id="dk"></span></span><span id="dl">Enter pincode</span></div><h3 style="display:flex;justify-content:space-between"><span>Total</span><span id="tt">${rs(total)}</span></h3><div class="row" style="margin:12px 0 4px"><input id="cp" placeholder="Discount code" style="margin:0;flex:1;text-transform:uppercase" value="${esc(S.cpn||"")}"><button class="btn" id="ca">Apply</button></div><div class="mut" id="cm" style="font-size:13px;min-height:16px"></div><p class="mut">Delivery details (shipping is arranged offline)</p>
   <input id="n" placeholder="Contact name" value="${esc(S.sh.n||"")}"><input id="ph" placeholder="Phone" inputmode="tel" value="${esc(S.sh.ph||"")}"><input id="ad" placeholder="Full address" value="${esc(S.sh.ad||"")}"><input id="ci" placeholder="City" value="${esc(S.sh.ci||"")}"><input id="pi" placeholder="Pincode (6 digits)" inputmode="numeric" maxlength="6" value="${esc(S.sh.pi||"")}">
   <p class="err" id="e"></p><button class="btn p" id="pay" style="width:100%">Pay <span id="pt">${rs(total)}</span></button>`:'<p class="mut">Your cart is empty.</p>'}</div>`;
@@ -144,12 +149,7 @@ function cart(){S.sh=S.sh||{};
     const e=$("#e"),btn=$("#pay");btn.disabled=true;e.textContent="";
     const call=async(path,body)=>{const r=await fetch("/api/"+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({idToken:await auth.currentUser.getIdToken(true),...body})});const d=await r.json().catch(()=>({}));if(!r.ok)throw d.error||"Something went wrong.";return d};
     try{const d=await call("create-order",{items:items.map(i=>({id:i.p.id,qty:i.q})),shipping:sh,coupon:S.cpn||""});
-     new Razorpay({key:d.key,order_id:d.razorpayOrderId,amount:d.amount,currency:"INR",name:"Spare Parts Wholesale",prefill:{name:sh.name,email:S.user.email,contact:sh.phone},theme:{color:"#f5ff3d"},
-      handler:async r=>{$("#dr").innerHTML='<div class="drawer"><h2>Confirming payment…</h2><p class="mut">Please wait, do not close this page.</p></div>';
-       try{await call("verify-payment",r);S.cart={};S.cpn="";render();$("#dr").innerHTML='<div class="drawer"><h2>Payment received</h2><p class="mut">Your order is confirmed. We will arrange delivery.</p><button class="btn" id="x">Close</button></div>'}
-       catch{$("#dr").innerHTML='<div class="drawer"><h2>Payment is being confirmed</h2><p class="mut">If money was deducted, your order will be confirmed automatically in a minute. Contact us if it is not.</p><button class="btn" id="x">Close</button></div>'}
-       $("#x").onclick=()=>$("#dr").innerHTML=""},
-      modal:{ondismiss:()=>{btn.disabled=false}}}).open();
+     const f=document.createElement("form");f.method="POST";f.action=d.action;for(const[k,v]of Object.entries(d.fields)){const i=document.createElement("input");i.type="hidden";i.name=k;i.value=v;f.appendChild(i)}document.body.appendChild(f);f.submit();
     }catch(x){e.textContent=typeof x==="string"?x:"Could not start payment. Try again.";btn.disabled=false}})}
 
 function admin(){
