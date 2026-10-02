@@ -63,26 +63,34 @@ onAuthStateChanged(auth,async u=>{
   if(!u){const m=S.lm||"";S.lm="";return login(m)}
   root.innerHTML='<div class="center mut">Loading…</div>';
   if(u.emailVerified){const em=u.email.toLowerCase();S.adm=ADMINS.includes(em)||await getDoc(doc(db,"admins",em)).then(x=>x.exists()).catch(()=>false)}
-  const pc=S.pc||"";S.pc="";
-  try{const ex=await getDoc(doc(db,"users",u.uid));if(!ex.exists()&&!isAdmin())await makeProfile(u,pc)}
-  catch(x){S.lm=typeof x==="string"?x:"Could not sign you in. Try again.";return signOut(auth)}
+  let ex;try{ex=await getDoc(doc(db,"users",u.uid))}catch(x){S.lm="Could not sign you in. Try again.";return signOut(auth)}
+  if(!ex.exists()&&!isAdmin())return chooseType(u);
+  startApp(u)});
+function startApp(u){
+  S.unsub&&S.unsub();
   S.unsub=onSnapshot(doc(db,"users",u.uid),s=>{
     S.profile=s.exists()?s.data():null;
     if(S.profile?.is_banned)return banned();
     if(S.profile||isAdmin())return shell();
     login("Could not load your account.")
-  },()=>login("Could not load your account."));
-});
+  },()=>login("Could not load your account."))}
 
 const fmtCode=e=>{let v=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8);e.target.value=v.length>4?v.slice(0,4)+"-"+v.slice(4):v};
 function login(msg=""){root.innerHTML=`<div class="center"><div class="card"><h2>Spare Parts Wholesale</h2><p class="mut">Sign in to start shopping.</p>
-<button class="btn p" id="g" style="width:100%;margin-top:14px">Login with Google</button>
-<button class="btn" id="so" style="width:100%;margin-top:10px;background:none">Are you a shop owner? <span class="mut">(optional)</span></button>
-<div id="sc" class="hide"><input id="c" class="mono" placeholder="Shop code XXXX-XXXX" maxlength="9" autocomplete="off" style="text-align:center;font-size:18px"><p class="mut sm" style="margin:8px 0 0">Shop owners get 50% off on everything. Enter your shop code, then tap Login with Google.</p></div><p class="err">${esc(msg)}</p></div></div>`;
- $("#c").oninput=fmtCode;$("#so").onclick=()=>$("#sc").classList.toggle("hide");
- $("#g").onclick=async()=>{const err=$(".err"),shop=!$("#sc").classList.contains("hide"),code=shop?$("#c").value:"";err.textContent="";
-  if(shop&&code.length<9)return err.textContent="Enter the full 8-character shop code, or close the shop owner box.";
-  S.pc=code;try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){S.pc="";if(e.code!=="auth/popup-closed-by-user")err.textContent="Login failed. Try again."}}}
+<button class="btn p" id="g" style="width:100%;margin-top:14px">Login with Google</button><p class="err">${esc(msg)}</p></div></div>`;
+ $("#g").onclick=async()=>{const err=$(".err");err.textContent="";
+  try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){if(e.code!=="auth/popup-closed-by-user")err.textContent="Login failed. Try again."}}}
+// Shown once, right after the first Google login: shop owners enter their shop code, everyone else continues as a customer.
+function chooseType(u,msg=""){root.innerHTML=`<div class="center"><div class="card"><h2>Welcome${u.displayName?", "+esc(u.displayName.split(" ")[0]):""}!</h2><p class="mut">Are you a shop owner? Enter your shop code to get 50% off on everything.</p>
+<input id="c" class="mono" placeholder="Shop code XXXX-XXXX" maxlength="9" autocomplete="off" style="text-align:center;font-size:18px">
+<button class="btn p" id="go" style="width:100%;margin-top:12px">Continue as shop owner</button>
+<button class="btn" id="cu" style="width:100%;margin-top:10px;background:none">I'm not a shop owner, continue</button>
+<button class="btn" id="so" style="width:100%;margin-top:10px;background:none;border:none" >Sign out</button><p class="err">${esc(msg)}</p></div></div>`;
+ $("#c").oninput=fmtCode;$("#so").onclick=()=>signOut(auth);
+ const run=async code=>{const err=$(".err");err.textContent="";$("#go").disabled=$("#cu").disabled=true;
+  try{await makeProfile(u,code);startApp(u)}catch(x){$("#go").disabled=$("#cu").disabled=false;err.textContent=typeof x==="string"?x:"Something went wrong. Try again."}};
+ $("#go").onclick=()=>{const c=$("#c").value;if(c.length<9)return $(".err").textContent="Enter the full 8-character shop code.";run(c)};
+ $("#cu").onclick=()=>run("")}
 async function makeProfile(u,code){
   const b=writeBatch(db);
   if(code){const ref=doc(db,"shopCodes",code),s=await getDoc(ref);
@@ -99,8 +107,16 @@ async function loadProducts(){const s=await getDocs(collection(db,"products"));S
 const cartCount=()=>Object.values(S.cart).reduce((a,b)=>a+b,0);
 
 const ph=n=>"data:image/svg+xml;utf8,"+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><rect width='200' height='200' fill='#1b1e26'/><text x='100' y='122' font-size='62' text-anchor='middle' fill='#f5ff3d' font-family='sans-serif' font-weight='700'>${esc((n||"?").slice(0,2).toUpperCase())}</text></svg>`);
-const PAY=new URLSearchParams(location.search).get("pay");if(PAY)history.replaceState(null,"",location.pathname);
-function payMsg(){if(!PAY||S.pm)return;S.pm=1;const ok=PAY==="success";$("#dr").innerHTML=`<div class="drawer"><h2 class="${ok?"in":"out"}">${ok?"Payment received":"Payment not confirmed"}</h2><p class="mut">${ok?"Your order is confirmed. We will arrange delivery.":"We could not confirm your payment, so no order was placed. If money was deducted, contact us."}</p><button class="btn" id="x">Close</button></div>`;$("#x").onclick=()=>$("#dr").innerHTML=""}
+const QS=new URLSearchParams(location.search),PAY=QS.get("pay"),PAYO=QS.get("o");if(PAY)history.replaceState(null,"",location.pathname);
+function payMsg(){if(!PAY||S.pm)return;S.pm=1;
+  const show=st=>{const ok=st==="success",pd=st==="pending";
+    $("#dr").innerHTML=`<div class="drawer"><h2 class="${ok?"in":pd?"":"out"}">${ok?"Payment received ✓":pd?"Payment pending":"Payment not completed"}</h2><p class="mut">${ok?"Your order is confirmed. We will arrange delivery.":pd?"We have not received confirmation of your payment yet. If money was deducted, it will be confirmed automatically in a few minutes. You can also check again now.":"Your payment was not completed, so no order was placed. If money was deducted, it will be refunded by your bank, or contact us."}</p><div class="row">${pd&&PAYO?'<button class="btn p" id="ck">Check payment status</button>':""}<button class="btn" id="x">Close</button></div><p class="err" id="ce"></p></div>`;
+    $("#x").onclick=()=>$("#dr").innerHTML="";
+    const ck=$("#ck");ck&&(ck.onclick=async()=>{ck.disabled=true;ck.textContent="Checking…";
+      try{const r=await fetch("/api/check-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({idToken:await auth.currentUser.getIdToken(true),orderId:PAYO})}),d=await r.json();if(!r.ok)throw d.error;show(d.status)}
+      catch(x){ck.disabled=false;ck.textContent="Check payment status";$("#ce").textContent=typeof x==="string"?x:"Could not check. Try again."}})};
+  show(PAY==="success"||PAY==="pending"?PAY:"failed");
+  if(PAY==="pending"&&PAYO)setTimeout(()=>{const c=$("#ck");c&&c.click()},4000)}
 async function shell(){
   try{await loadProducts()}catch{}
   root.innerHTML=`<div class="top"><b class="logo">Spare<span>Parts</span></b><div class="row">${isShop()?'<span class="tag in">Shop owner · 50% off</span>':""}${isAdmin()?'<button class="btn" id="va">Admin</button>':""}<button class="btn" id="vs">Store</button><button class="btn" id="o">Sign out</button></div></div><div class="wrap" id="main"></div><div id="bar"></div><div id="dr"></div>`;
@@ -177,7 +193,7 @@ async function aUsers(){
 async function aOrders(){
   const snap=await getDocs(query(collection(db,"orders"),orderBy("createdAt","desc"))),all=snap.docs.map(d=>({id:d.id,...d.data()})),rows=S.allOrd?all:all.filter(o=>o.paymentStatus==="PAID");
   $("#ab").innerHTML=rows.length?`<table><tr><th>Order</th><th>Items</th><th>Total</th><th>Payment</th><th>Ship to</th></tr>${rows.map(o=>`<tr><td>${o.id.slice(0,6)}<div class="mut">${when(o.createdAt)}</div><div class="mut mono">${esc(o.shopCode)}</div></td><td>${o.items.map(i=>esc(i.name)+" ×"+i.qty).join("<br>")}</td><td>${rs(o.amount)}${o.discount?`<div class="mut">coupon ${esc(o.couponCode)} −${rs(o.discount)}</div>`:""}<div class="mut">incl. delivery ${rs(o.shippingCharge||0)}<br>${o.distanceKm||0} km · ${((o.weightGrams||0)/1000).toFixed(1)} kg</div></td>
-  <td class="${o.paymentStatus==="PAID"?"in":"out"}">${o.paymentStatus}<div class="mut">${esc(o.razorpayPaymentId||"")}</div></td><td>${esc(o.shipping.name)}, ${esc(o.shipping.phone)}<br>${esc(o.shipping.address)}, ${esc(o.shipping.city)} ${esc(o.shipping.pincode)}</td></tr>`).join("")}</table>`:'<p class="mut">No paid orders yet.</p>';
+  <td class="${o.paymentStatus==="PAID"?"in":"out"}">${o.paymentStatus}<div class="mut">${esc(o.payuPaymentId||o.razorpayPaymentId||"")}</div></td><td>${esc(o.shipping.name)}, ${esc(o.shipping.phone)}<br>${esc(o.shipping.address)}, ${esc(o.shipping.city)} ${esc(o.shipping.pincode)}</td></tr>`).join("")}</table>`:'<p class="mut">No paid orders yet.</p>';
   $("#ab").insertAdjacentHTML("afterbegin",`<div class="row" style="margin-bottom:10px;justify-content:space-between"><b>${S.allOrd?"All orders":"Paid orders (ready to process)"}</b><button class="btn" id="tg">${S.allOrd?"Show only paid":"Show unpaid too"}</button></div>`);$("#tg").onclick=()=>{S.allOrd=!S.allOrd;aOrders()}}
 
 const SAMPLES=[["iPhone 11 Display (OEM)","Displays",185000,20,200],["Samsung A12 Battery","Batteries",42000,50,60],["Type-C Charging Port Flex","Ports",9000,100,10],["Redmi Note 10 Back Glass","Back Glass",28000,30,40],["Tempered Glass 9H (pack of 10)","Accessories",15000,80,150],["Fast Charger 33W","Accessories",35000,40,120]];
