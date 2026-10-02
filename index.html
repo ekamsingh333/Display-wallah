@@ -36,6 +36,26 @@ body{background:radial-gradient(700px 400px at 10% -10%,#f5ff3d14,transparent 60
 .bar{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:9;background:#1b1e26;border:1px solid #3a3f4b;border-radius:16px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;max-width:640px;margin:auto;box-shadow:0 12px 40px #000a}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;max-width:520px}.panel h3{margin:0 0 4px}.row2{display:flex;gap:8px}
 label.mut{display:block;margin-top:12px;font-size:13px}input[type=file]{padding:10px}
+
+/* Professional UI polish: presentation only; application/Firebase logic is unchanged. */
+:root{--bg:#080a0f;--panel:#11151d;--line:#252d3a;--text:#f4f7fb;--mut:#9aa7b8;--y:#eaff45;--g:#55e6a5;--r:#ff6b83}
+body{background:radial-gradient(900px 500px at 8% -12%,#eaff4514,transparent 62%),radial-gradient(700px 440px at 100% 0%,#55e9ff0b,transparent 58%),var(--bg);letter-spacing:.005em}
+.top{background:#080a0feF;backdrop-filter:blur(18px);border-bottom-color:#ffffff12;padding:14px clamp(14px,3vw,30px);box-shadow:0 8px 30px #0002}
+.logo{font-size:22px!important;letter-spacing:-.06em!important}.logo span{color:var(--y)}
+.wrap{max-width:1180px;padding-left:clamp(14px,3vw,28px);padding-right:clamp(14px,3vw,28px)}
+.btn{border:1px solid #ffffff17;background:linear-gradient(180deg,#202633,#171c26);border-radius:12px;padding:11px 15px;transition:transform .16s,border-color .16s,filter .16s;box-shadow:0 3px 10px #0002}
+.btn:hover{border-color:#eaff4570;transform:translateY(-1px)}.btn:active{transform:translateY(0)}
+.btn.p{background:linear-gradient(135deg,#f5ff66,var(--y));color:#10120a;border-color:#eaff45;box-shadow:0 5px 18px #eaff451c}.btn.d{background:#ff667d12}
+.card,.panel,.prod,.drawer{background:linear-gradient(155deg,#151a24,#10131a);border-color:#ffffff13;box-shadow:0 16px 42px #0002}
+.card{border-radius:22px;padding:26px}.panel{max-width:720px;border-radius:18px;padding:20px;margin-bottom:16px}
+input,select{width:100%;background:#0b0e14;border:1px solid #ffffff19;color:var(--text);border-radius:12px;padding:13px 14px;outline:none;transition:border-color .16s,box-shadow .16s}
+input:focus,select:focus{border-color:#eaff4590;box-shadow:0 0 0 3px #eaff4512}
+input::placeholder{color:#788496}.hero{padding:clamp(30px,6vw,58px) 0 12px}.hero h1{letter-spacing:-.055em;line-height:1.04}.hero p{max-width:620px;line-height:1.65}
+.hero input{max-width:650px;background:#111620;border-color:#ffffff19}.chips{padding:16px 0 6px;scrollbar-width:thin}.chip{border-color:#ffffff17;background:#121721}.chip.on,.tabs .btn.on{box-shadow:0 4px 16px #eaff4518}
+.grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:16px}.prod{border-radius:18px;overflow:hidden}.prod:hover{border-color:#eaff4555;transform:translateY(-2px);box-shadow:0 16px 35px #0004}.prod img{background:#171d27}.pb{padding:15px!important;gap:8px}.pn{font-size:15px;min-height:2.6em}.price{font-size:19px}.tag{background:#eaff4512;color:#eaff9a;border:1px solid #eaff4520;padding:4px 9px}
+.tabs{gap:8px;margin:22px 0 16px}.tabs .btn{padding:10px 14px}.scroll{border:1px solid #ffffff10;border-radius:14px;background:#10141b;padding:8px}table{min-width:600px;font-size:13px}th{color:#aeb9c8;font-weight:700;background:#ffffff05}td,th{padding:12px 10px;border-bottom-color:#ffffff0d}tr:last-child td{border-bottom:0}
+.row2{gap:10px}.panel h3{font-size:18px;margin-bottom:8px}.panel input{margin-top:10px}.err{font-size:13px}.drawer{border-radius:22px 0 0 22px;padding:22px;box-shadow:-18px 0 60px #0006}.bar{background:#151b25ee;backdrop-filter:blur(16px);border-color:#ffffff20;border-radius:18px;box-shadow:0 14px 42px #0007}
+@media(max-width:600px){.top{align-items:flex-start}.top .row{justify-content:flex-end}.top .btn{padding:9px 10px;font-size:13px}.hero{padding-top:30px}.panel{padding:15px}.row2>*{min-width:0}.drawer{border-radius:20px 20px 0 0;top:auto;max-height:92dvh;width:100%;border-left:0;border-top:1px solid var(--line)}}
 </style></head><body>
 <div id="app"></div>
 <script type="module">
@@ -211,16 +231,16 @@ async function aProducts(){
   document.querySelectorAll("[data-x]").forEach(b=>b.onclick=async()=>{if(confirm("Delete this product?")){await deleteDoc(doc(db,"products",b.dataset.x));aProducts()}})}
 async function aCoupons(){
   const snap=await getDocs(collection(db,"coupons")),rows=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
-  $("#ab").innerHTML=`<div class="panel"><h3>New discount code</h3><input id="cc" placeholder="Code (leave empty to auto-generate)" style="text-transform:uppercase"><div class="row2"><input id="cpc" type="number" placeholder="Discount %"><input id="cmu" type="number" placeholder="Max uses (0 = unlimited)"></div><p class="err" id="ce"></p><button class="btn p" id="cg">Create code</button></div>
-  <table style="margin-top:14px"><tr><th>Code</th><th>Off</th><th>Used</th><th></th></tr>${rows.map(c=>`<tr><td class="mono">${esc(c.code)}</td><td>${c.percent}%</td><td>${c.used||0}${c.maxUses?" / "+c.maxUses:""}</td><td><div class="row"><button class="btn" data-ct="${esc(c.code)}" data-v="${c.active?0:1}">${c.active?"Disable":"Enable"}</button><button class="btn d" data-cd="${esc(c.code)}">Delete</button></div></td></tr>`).join("")}</table>`;
-  $("#cg").onclick=async()=>{const A="ABCDEFGHJKMNPQRSTUVWXYZ23456789",pc=Math.floor(+$("#cpc").value),e=$("#ce");let code=$("#cc").value.trim().toUpperCase();
+  $("#ab").innerHTML=`<div class="panel"><h3>Create discount coupon</h3><p class="mut" style="margin:4px 0 12px">Create a code and choose the percentage customers will save.</p><label class="mut" for="cc">Coupon code</label><input id="cc" placeholder="e.g. SAVE20 (leave empty to auto-generate)" style="text-transform:uppercase"><div class="row2"><div style="flex:1;min-width:130px"><label class="mut" for="cpc">Discount percentage</label><select id="cpc"><option value="10">10% off</option><option value="20" selected>20% off</option><option value="30">30% off</option><option value="40">40% off</option></select></div><div style="flex:1;min-width:130px"><label class="mut" for="cmu">Maximum uses</label><input id="cmu" type="number" min="0" step="1" placeholder="0 = unlimited" value="0" style="margin-top:10px"></div></div><p class="err" id="ce"></p><button class="btn p" id="cg">＋ Create coupon</button></div>
+  <div class="row" style="justify-content:space-between;margin:20px 0 10px"><h3 style="margin:0">Coupons</h3><span class="tag">${rows.length} total</span></div><table><tr><th>Coupon code</th><th>Discount</th><th>Usage</th><th>Status / Actions</th></tr>${rows.map(c=>`<tr><td class="mono">${esc(c.code)}</td><td><span class="tag">${c.percent}% OFF</span></td><td>${c.used||0}${c.maxUses?" / "+c.maxUses:" / Unlimited"}</td><td><div class="row"><button class="btn" data-ct="${esc(c.code)}" data-v="${c.active?0:1}">${c.active?"Disable":"Enable"}</button><button class="btn d" data-cd="${esc(c.code)}">Delete</button></div></td></tr>`).join("")||'<tr><td colspan="4" class="mut">No coupons created yet.</td></tr>'}</table>`;
+  $("#cg").onclick=async()=>{const A="ABCDEFGHJKMNPQRSTUVWXYZ23456789",pc=Number($("#cpc").value),e=$("#ce"),btn=$("#cg");let code=$("#cc").value.trim().toUpperCase();
     if(!code)code=[...crypto.getRandomValues(new Uint32Array(6))].map(x=>A[x%A.length]).join("");
-    if(!/^[A-Z0-9_-]{3,20}$/.test(code))return e.textContent="Code: 3-20 letters/numbers.";
-    if(!(pc>=1&&pc<=90))return e.textContent="Discount must be 1 to 90 %.";
-    if((await getDoc(doc(db,"coupons",code))).exists())return e.textContent="This code already exists.";
-    await setDoc(doc(db,"coupons",code),{code,percent:pc,maxUses:Math.max(0,Math.floor(+$("#cmu").value)||0),used:0,active:true,createdAt:serverTimestamp()});aCoupons()};
-  document.querySelectorAll("[data-ct]").forEach(b=>b.onclick=async()=>{await updateDoc(doc(db,"coupons",b.dataset.ct),{active:b.dataset.v==="1"});aCoupons()});
-  document.querySelectorAll("[data-cd]").forEach(b=>b.onclick=async()=>{if(confirm("Delete this code?")){await deleteDoc(doc(db,"coupons",b.dataset.cd));aCoupons()}})}
+    if(!/^[A-Z0-9_-]{3,20}$/.test(code))return e.textContent="Use 3–20 letters, numbers, _ or - for the coupon code.";
+    if(![10,20,30,40].includes(pc))return e.textContent="Choose a discount of 10%, 20%, 30% or 40%.";
+    if((await getDoc(doc(db,"coupons",code))).exists())return e.textContent="This coupon code already exists.";
+    btn.disabled=true;try{await setDoc(doc(db,"coupons",code),{code,percent:pc,maxUses:Math.max(0,Math.floor(Number($("#cmu").value)||0)),used:0,active:true,createdAt:serverTimestamp()});await aCoupons()}catch(err){e.textContent="Could not create coupon. Check your admin access and try again.";btn.disabled=false}};
+  document.querySelectorAll("[data-ct]").forEach(b=>b.onclick=async()=>{try{await updateDoc(doc(db,"coupons",b.dataset.ct),{active:b.dataset.v==="1"});aCoupons()}catch(e){alert("Could not update coupon status.")}});
+  document.querySelectorAll("[data-cd]").forEach(b=>b.onclick=async()=>{if(confirm("Delete this coupon?")){try{await deleteDoc(doc(db,"coupons",b.dataset.cd));aCoupons()}catch(e){alert("Could not delete coupon.")}}})}
 async function aDelivery(){
   const sn=await getDoc(doc(db,"settings","delivery")),d={shopPincode:"141001",slabs:[{km:50,charge:100,extra:30},{km:100,charge:150,extra:50},{km:200,charge:250,extra:80}],beyond:400,beyondExtra:120,fallback:200,freeAbove:0,...(sn.exists()?sn.data():{})};
   $("#ab").innerHTML=`<div class="panel"><h3>Delivery charges</h3><p class="mut">Charge = price for the first 1 kg (by distance) + extra for each additional kg. Weight is rounded up to full kg. Distance is estimated from the customer's pincode.</p>
