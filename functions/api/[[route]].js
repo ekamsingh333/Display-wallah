@@ -265,3 +265,24 @@ async function updateOrderStatus(env, req) {
   if (o.paymentStatus !== "PAID") throw "Only paid orders can be tracked.";
   const upd = { trackStatus: status, trackUpdatedAt: new Date() };
   TRACK.forEach(
+    (k, j) => { if (TRACK_TIME[k]) upd[TRACK_TIME[k]] = j === i ? new Date() : j > i ? null : undefined; });
+  Object.keys(upd).forEach((k) => upd[k] === undefined && delete upd[k]);
+  await fsPatch(env, t, "orders/" + id, upd);
+  return { ok: true, status };
+}
+export async function onRequestPost({ request, env, params }) {
+  const route = [].concat(params.route || [])[0];
+  try {
+    if (route === "delivery-quote") return J(await deliveryQuote(env, request));
+    if (route === "create-order") return J(await createOrder(env, request));
+    if (route === "payu-return") return await payuReturn(env, request);
+    if (route === "payu-webhook") return await payuWebhook(env, request);
+    if (route === "check-payment") return J(await checkPayment(env, request));
+    if (route === "my-orders") return J(await myOrders(env, request));
+    if (route === "update-order-status") return J(await updateOrderStatus(env, request));
+    return J({ error: "Not found" }, 404);
+  } catch (e) {
+    if (typeof e !== "string") console.error("API error [" + route + "]", (e && e.stack) || e);
+    return J({ error: typeof e === "string" ? e : "Server error: " + ((e && e.message) || "unknown") }, typeof e === "string" ? 400 : 500);
+  }
+}
