@@ -106,7 +106,7 @@ input::placeholder{color:#a39aa0}.hero{padding:44px 0 10px;animation:fadeRise .7
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import{getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,onSnapshot,serverTimestamp,getDocs,collection,query,orderBy,writeBatch,deleteDoc}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import{getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,onSnapshot,serverTimestamp,getDocs,collection,query,orderBy,writeBatch,deleteDoc,where}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 /* ====== EDIT THESE ====== */
 const firebaseConfig={apiKey:"AIzaSyD4ahz9H3-5kD7rfqowHt3CAPDCjuKbUv0",authDomain:"display-wala.firebaseapp.com",projectId:"display-wala",appId:"1:788299746317:web:6e37f2fbf512a2847b9944"};
@@ -177,7 +177,7 @@ const ph=n=>"data:image/svg+xml;utf8,"+encodeURIComponent(`<svg xmlns='http://ww
 const QS=new URLSearchParams(location.search),PAY=QS.get("pay"),PAYO=QS.get("o");if(PAY)history.replaceState(null,"",location.pathname);
 function payMsg(){if(!PAY||S.pm)return;S.pm=1;
   const show=st=>{const ok=st==="success",pd=st==="pending";
-    $("#dr").innerHTML=`<div class="drawer"><h2 class="${ok?"in":pd?"":"out"}">${ok?"Payment received ✓":pd?"Payment pending":"Payment not completed"}</h2><p class="mut">${ok?"Your order is confirmed. We will arrange delivery.":pd?"We have not received confirmation of your payment yet. If money was deducted, it will be confirmed automatically in a few minutes. You can also check again now.":"Your payment was not completed, so no order was placed. If money was deducted, it will be refunded by your bank, or contact us."}</p><div class="row">${pd&&PAYO?'<button class="btn p" id="ck">Check payment status</button>':""}<button class="btn" id="x">Close</button></div><p class="err" id="ce"></p></div>`;
+    $("#dr").innerHTML=`<div class="drawer"><h2 class="${ok?"in":pd?"":"out"}">${ok?"Payment received ✓":pd?"Payment is pending":"Order failed — payment is pending"}</h2><p class="mut">${ok?"Your order is confirmed. We will arrange delivery.":pd?"We have not received confirmation of your payment yet. If money was deducted, it will be confirmed automatically in a few minutes. You can also check again now.":"Payment is pending. Your payment was not completed, so the order has failed and no order was placed. If money was deducted, it will be refunded by your bank, or contact us."}</p><div class="row">${pd&&PAYO?'<button class="btn p" id="ck">Check payment status</button>':""}<button class="btn" id="x">Close</button></div><p class="err" id="ce"></p></div>`;
     $("#x").onclick=()=>$("#dr").innerHTML="";
     const ck=$("#ck");ck&&(ck.onclick=async()=>{ck.disabled=true;ck.textContent="Checking…";
       try{const r=await fetch("/api/check-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({idToken:await auth.currentUser.getIdToken(true),orderId:PAYO})}),d=await r.json();if(!r.ok)throw d.error;show(d.status)}
@@ -207,7 +207,7 @@ function cart(){S.sh=S.sh||{};
   const items=Object.entries(S.cart).map(([id,q])=>({p:S.products.find(x=>x.id===id),q})).filter(i=>i.p),total=items.reduce((a,i)=>a+sp(i.p.price)*i.q,0);
   $("#dr").innerHTML=`<div class="drawer"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Your cart</h2><button class="btn" id="x">Close</button></div>
   ${items.length?items.map(i=>`<div class="row" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)"><div>${esc(i.p.name)}<div class="mut">${rs(sp(i.p.price))} × ${i.q}</div></div><div class="row"><button class="btn" data-m="${i.p.id}">−</button><button class="btn" data-pl="${i.p.id}">+</button></div></div>`).join("")+`
-  <div class="row" style="justify-content:space-between"><span class="mut">Items</span><span>${rs(total)}</span></div><div class="row" id="dcr" style="justify-content:space-between;margin-top:6px;display:none"><span class="mut">Discount <span id="dct"></span></span><span id="dc" style="color:var(--g)"></span></div><div class="row" style="justify-content:space-between;margin-top:6px"><span class="mut">Delivery <span id="dk"></span></span><span id="dl">Enter pincode</span></div><h3 style="display:flex;justify-content:space-between"><span>Total</span><span id="tt">${rs(total)}</span></h3><div class="row" style="margin:12px 0 4px"><input id="cp" placeholder="Discount code" style="margin:0;flex:1;text-transform:uppercase" value="${esc(S.cpn||"")}"><button class="btn" id="ca">Apply</button></div><div class="mut" id="cm" style="font-size:13px;min-height:16px"></div><p class="mut">Delivery details (shipping is arranged offline)</p>
+  <div class="row" style="justify-content:space-between"><span class="mut">Items</span><span>${rs(total)}</span></div><div class="row" style="justify-content:space-between;margin-top:6px"><span class="mut">Delivery <span id="dk"></span></span><span id="dl">Enter pincode</span></div><h3 style="display:flex;justify-content:space-between"><span>Total</span><span id="tt">${rs(total)}</span></h3><p class="mut">Delivery details (shipping is arranged offline)</p>
   <input id="n" placeholder="Contact name" value="${esc(S.sh.n||"")}"><input id="ph" placeholder="Phone" inputmode="tel" value="${esc(S.sh.ph||"")}"><input id="ad" placeholder="Full address" value="${esc(S.sh.ad||"")}"><input id="ci" placeholder="City" value="${esc(S.sh.ci||"")}"><input id="pi" placeholder="Pincode (6 digits)" inputmode="numeric" maxlength="6" value="${esc(S.sh.pi||"")}">
   <p class="err" id="e"></p><button class="btn p" id="pay" style="width:100%">Pay <span id="pt">${rs(total)}</span></button>`:'<p class="mut">Your cart is empty.</p>'}</div>`;
   $("#x").onclick=()=>$("#dr").innerHTML="";
@@ -215,31 +215,29 @@ function cart(){S.sh=S.sh||{};
   document.querySelectorAll("[data-pl]").forEach(b=>b.onclick=()=>{const id=b.dataset.pl,p=S.products.find(x=>x.id===id);if(S.cart[id]<p.stock)S.cart[id]++;render();cart()});
   if(items.length){
     let dq=null,tk=0;
-    const upd=m=>{const ch=dq&&!dq.nopin?dq.charge:0,ds=dq?dq.discount||0:0;
+    const upd=m=>{const ch=dq&&!dq.nopin?dq.charge:0;
       $("#dl").textContent=m||(dq&&!dq.nopin?(dq.charge?rs(dq.charge):"FREE"):"Enter pincode");
       $("#dk").textContent=dq&&dq.km&&!dq.nopin?`(~${dq.km} km${dq.approx?", est.":""})`:"";
-      $("#dcr").style.display=ds?"flex":"none";$("#dc").textContent="−"+rs(ds);$("#dct").textContent=ds?`(${dq.code} ${dq.percent}%)`:"";
-      const t=total-ds+ch;$("#tt").textContent=rs(t);$("#pt").textContent=rs(t)};
+      const t=total+ch;$("#tt").textContent=rs(t);$("#pt").textContent=rs(t)};
     const getQ=async()=>{const my=++tk;upd("Calculating…");
-      try{const r=await fetch("/api/delivery-quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({idToken:await auth.currentUser.getIdToken(),pincode:$("#pi").value.trim(),coupon:S.cpn||"",items:items.map(i=>({id:i.p.id,qty:i.q}))})});const d=await r.json();if(!r.ok)throw d.error;if(my===tk){dq=d;if(d.couponError)S.cpn="";upd()}}
+      try{const r=await fetch("/api/delivery-quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({idToken:await auth.currentUser.getIdToken(),pincode:$("#pi").value.trim(),items:items.map(i=>({id:i.p.id,qty:i.q}))})});const d=await r.json();if(!r.ok)throw d.error;if(my===tk){dq=d;upd()}}
       catch(x){if(my===tk){dq=null;upd(typeof x==="string"?x:"Could not calculate")}}};
     ["n","ph","ad","ci","pi"].forEach(k=>$("#"+k).oninput=()=>{S.sh[k]=$("#"+k).value;if(k==="pi"){if($("#pi").value.trim().length===6)getQ();else if(dq){dq={...dq,nopin:true};upd()}}});
-    $("#ca").onclick=async()=>{S.cpn=$("#cp").value.trim().toUpperCase();await getQ();$("#cm").textContent=dq&&dq.couponError?dq.couponError:(dq&&dq.discount?"Code applied ✓":"")};
-    getQ().then(()=>{if(dq&&dq.discount)$("#cm").textContent="Code applied ✓"})}
+    getQ()}
   items.length&&($("#pay").onclick=async()=>{
     const sh={name:$("#n").value.trim(),phone:$("#ph").value.trim(),address:$("#ad").value.trim(),city:$("#ci").value.trim(),pincode:$("#pi").value.trim()};
     if(Object.values(sh).some(v=>!v))return $("#e").textContent="Fill in all delivery details.";
     const e=$("#e"),btn=$("#pay");btn.disabled=true;e.textContent="";
     const call=async(path,body)=>{const r=await fetch("/api/"+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({idToken:await auth.currentUser.getIdToken(true),...body})});const d=await r.json().catch(()=>({}));if(!r.ok)throw d.error||"Something went wrong.";return d};
-    try{const d=await call("create-order",{items:items.map(i=>({id:i.p.id,qty:i.q})),shipping:sh,coupon:S.cpn||""});
+    try{const d=await call("create-order",{items:items.map(i=>({id:i.p.id,qty:i.q})),shipping:sh});
      const f=document.createElement("form");f.method="POST";f.action=d.action;for(const[k,v]of Object.entries(d.fields)){const i=document.createElement("input");i.type="hidden";i.name=k;i.value=v;f.appendChild(i)}document.body.appendChild(f);f.submit();
     }catch(x){e.textContent=typeof x==="string"?x:"Could not start payment. Try again.";btn.disabled=false}})}
 
 function admin(){
-  const T=[["products","Products"],["codes","Shop codes"],["users","Users"],["orders","Orders"],["delivery","Delivery"],["coupons","Discounts"],...(isOwner()?[["admins","Admins"]]:[])];
+  const T=[["products","Products"],["codes","Shop codes"],["users","Users"],["orders","Orders"],["delivery","Delivery"],...(isOwner()?[["admins","Admins"]]:[])];
   $("#main").innerHTML=`<div class="tabs">${T.map(t=>`<button class="btn ${S.tab===t[0]?"on":""}" data-t="${t[0]}">${t[1]}</button>`).join("")}</div><div id="ab" class="scroll">Loading…</div>`;
   document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{S.tab=b.dataset.t;admin()});
-  ({codes:aCodes,users:aUsers,orders:aOrders,products:aProducts,admins:aAdmins,delivery:aDelivery,coupons:aCoupons})[S.tab]()}
+  ({codes:aCodes,users:aUsers,orders:aOrders,products:aProducts,admins:aAdmins,delivery:aDelivery})[S.tab]()}
 
 const when=t=>t?.toDate?t.toDate().toLocaleString("en-IN"):"";
 async function aCodes(){
@@ -259,16 +257,21 @@ async function aUsers(){
 
 async function aOrders(){
   const snap=await getDocs(query(collection(db,"orders"),orderBy("createdAt","desc"))),all=snap.docs.map(d=>({id:d.id,...d.data()})),rows=S.allOrd?all:all.filter(o=>o.paymentStatus==="PAID");
-  $("#ab").innerHTML=rows.length?`<table><tr><th>Order</th><th>Items</th><th>Total</th><th>Payment</th><th>Ship to</th><th>Tracking</th></tr>${rows.map(o=>`<tr><td>${o.id.slice(0,6)}<div class="mut">${when(o.createdAt)}</div><div class="mut mono">${esc(o.shopCode)}</div></td><td>${o.items.map(i=>esc(i.name)+" ×"+i.qty).join("<br>")}</td><td>${rs(o.amount)}${o.discount?`<div class="mut">coupon ${esc(o.couponCode)} −${rs(o.discount)}</div>`:""}<div class="mut">incl. delivery ${rs(o.shippingCharge||0)}<br>${o.distanceKm||0} km · ${((o.weightGrams||0)/1000).toFixed(1)} kg</div></td>
+  $("#ab").innerHTML=rows.length?`<table><tr><th>Order</th><th>Items</th><th>Total</th><th>Payment</th><th>Ship to</th><th>Tracking</th></tr>${rows.map(o=>`<tr><td>${o.id.slice(0,6)}<div class="mut">${when(o.createdAt)}</div><div class="mut mono">${esc(o.shopCode)}</div></td><td>${o.items.map(i=>esc(i.name)+" ×"+i.qty).join("<br>")}</td><td>${rs(o.amount)}<div class="mut">incl. delivery ${rs(o.shippingCharge||0)}<br>${o.distanceKm||0} km · ${((o.weightGrams||0)/1000).toFixed(1)} kg</div></td>
   <td class="${o.paymentStatus==="PAID"?"in":"out"}">${o.paymentStatus}<div class="mut">${esc(o.payuPaymentId||o.razorpayPaymentId||"")}</div></td><td>${esc(o.shipping.name)}, ${esc(o.shipping.phone)}<br>${esc(o.shipping.address)}, ${esc(o.shipping.city)} ${esc(o.shipping.pincode)}</td><td>${trkCell(o)}</td></tr>`).join("")}</table>`:'<p class="mut">No paid orders yet.</p>';
   $("#ab").insertAdjacentHTML("afterbegin",`<div class="row" style="margin-bottom:10px;justify-content:space-between"><b>${S.allOrd?"All orders":"Paid orders (ready to process)"}</b><button class="btn" id="tg">${S.allOrd?"Show only paid":"Show unpaid too"}</button></div>`);$("#tg").onclick=()=>{S.allOrd=!S.allOrd;aOrders()};wireTrk()}
 
 
 /* ---- My orders + tracking ---- */
 const TR=[["placed","Order placed","🧾"],["packed","Packed","📦"],["shipped","Shipped","🚚"],["out_for_delivery","Out for delivery","🛵"],["delivered","Delivered","✅"]];
-const dt=x=>x?new Date(x).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}):"";
-const trkApi=async(path,body)=>{const r=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({idToken:await auth.currentUser.getIdToken(),...body})}),d=await r.json();if(!r.ok)throw d.error;return d};
-async function moFetch(){const d=await trkApi("/api/my-orders",{});S.mo=d.orders;return d.orders}
+const dt=x=>x?(x.toDate?x.toDate():new Date(x)).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}):"";
+async function moFetch(){
+  const u=auth.currentUser,seen={},out=[];
+  const rs_=await Promise.allSettled(["uid","userId"].map(f=>getDocs(query(collection(db,"orders"),where(f,"==",u.uid)))));
+  if(rs_.every(r=>r.status==="rejected"))throw"Could not load your orders. Try again.";
+  rs_.forEach(r=>r.status==="fulfilled"&&r.value.docs.forEach(d=>{if(!seen[d.id]){seen[d.id]=1;out.push({id:d.id,...d.data()})}}));
+  const ms=t=>t?.toMillis?t.toMillis():t?new Date(t).getTime():0;
+  S.mo=out.filter(o=>o.paymentStatus==="PAID").sort((a,b)=>ms(b.createdAt)-ms(a.createdAt));return S.mo}
 async function myOrders(){
   $("#main").innerHTML=`<div class="mo-head"><h2>My orders</h2><button class="btn" id="mr">Refresh</button></div><div id="mol"><p class="mut">Loading…</p></div>`;
   $("#mr").onclick=myOrders;
@@ -287,15 +290,16 @@ function moTrack(id){
   <div class="trk ${fin?"fin":""}" style="--k:${k};--n:${n};--t:${T}s"><div class="trk-line"><div class="trk-fill"></div></div>
   ${TR.map((t,j)=>`<div class="trk-step ${j<k?"done":j===k?"cur":"todo"}" style="--d:${j<=k?(k?j*(T/k):0):T+.1}s"><div class="trk-dot"><span>${t[2]}</span></div><div class="trk-txt"><b>${t[1]}</b><div class="mut sm">${j<=k?dt(times[j]):"Pending"}</div></div></div>`).join("")}</div>
   <div class="mo-det"><b>Items</b>${o.items.map(it=>`<div class="r"><span>${esc(it.name)} × ${it.qty}</span></div>`).join("")}
-  <div class="r mut" style="margin-top:8px"><span>Items total</span><span>${rs(o.itemsTotal)}</span></div>${o.discount?`<div class="r mut"><span>Discount ${esc(o.couponCode)}</span><span>−${rs(o.discount)}</span></div>`:""}<div class="r mut"><span>Delivery</span><span>${rs(o.shippingCharge)}</span></div><div class="r"><b>Total</b><b>${rs(o.amount)}</b></div>
+  <div class="r mut" style="margin-top:8px"><span>Items total</span><span>${rs(o.itemsTotal)}</span></div><div class="r mut"><span>Delivery</span><span>${rs(o.shippingCharge)}</span></div><div class="r"><b>Total</b><b>${rs(o.amount)}</b></div>
   <div style="margin-top:12px"><b>Delivering to</b><div class="mut">${esc(sh.name||"")}${sh.phone?", "+esc(sh.phone):""}<br>${esc(sh.address||"")}, ${esc(sh.city||"")} ${esc(sh.pincode||"")}</div></div></div>
   <button class="btn" id="rf" style="margin-top:14px;width:100%">Refresh status</button></div>`;
   $("#x").onclick=()=>{$("#dr").innerHTML=""};
   $("#rf").onclick=async()=>{const b=$("#rf");b.disabled=true;b.textContent="Refreshing…";try{await moFetch();moTrack(id);S.view==="orders"&&$("#mol")&&moList()}catch(x){b.disabled=false;b.textContent="Could not refresh. Try again."}}}
 const trkCell=o=>o.paymentStatus!=="PAID"?'<span class="mut">—</span>':`<div class="trk-adm">${TR.map(t=>`<button class="btn ${(o.trackStatus||"placed")===t[0]?"p":""}" data-ot="${esc(o.id)}" data-os="${t[0]}">${t[1]}</button>`).join("")}</div>`;
+const TF={packed:"packedAt",shipped:"shippedAt",out_for_delivery:"outAt",delivered:"deliveredAt"};
 function wireTrk(){document.querySelectorAll("[data-ot]").forEach(b=>b.onclick=async()=>{
   document.querySelectorAll("[data-ot]").forEach(x=>x.disabled=true);
-  try{await trkApi("/api/update-order-status",{orderId:b.dataset.ot,status:b.dataset.os})}
+  try{const st=b.dataset.os,k=TF[st],up={trackStatus:st};if(k&&!(await getDoc(doc(db,"orders",b.dataset.ot))).data()?.[k])up[k]=new Date().toISOString();await updateDoc(doc(db,"orders",b.dataset.ot),up)}
   catch(x){alert(typeof x==="string"?x:"Could not update the order status. Try again.")}
   aOrders()})}
 const SAMPLES=[["iPhone 11 Display (OEM)","Displays",185000,20,200],["Samsung A12 Battery","Batteries",42000,50,60],["Type-C Charging Port Flex","Ports",9000,100,10],["Redmi Note 10 Back Glass","Back Glass",28000,30,40],["Tempered Glass 9H (pack of 10)","Accessories",15000,80,150],["Fast Charger 33W","Accessories",35000,40,120]];
@@ -311,18 +315,6 @@ async function aProducts(){
   document.querySelectorAll("[data-w]").forEach(i=>i.onchange=()=>updateDoc(doc(db,"products",i.dataset.w),{weight:+i.value||0}));
   document.querySelectorAll("[data-p]").forEach(i=>i.onchange=()=>updateDoc(doc(db,"products",i.dataset.p),{price:Math.round(+i.value*100)}));
   document.querySelectorAll("[data-x]").forEach(b=>b.onclick=async()=>{if(confirm("Delete this product?")){await deleteDoc(doc(db,"products",b.dataset.x));aProducts()}})}
-async function aCoupons(){
-  const snap=await getDocs(collection(db,"coupons")),rows=snap.docs.map(d=>d.data()).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
-  $("#ab").innerHTML=`<div class="panel"><h3>New discount code</h3><input id="cc" placeholder="Code (leave empty to auto-generate)" style="text-transform:uppercase"><div class="row2"><input id="cpc" type="number" placeholder="Discount %"><input id="cmu" type="number" placeholder="Max uses (0 = unlimited)"></div><p class="err" id="ce"></p><button class="btn p" id="cg">Create code</button></div>
-  <table style="margin-top:14px"><tr><th>Code</th><th>Off</th><th>Used</th><th></th></tr>${rows.map(c=>`<tr><td class="mono">${esc(c.code)}</td><td>${c.percent}%</td><td>${c.used||0}${c.maxUses?" / "+c.maxUses:""}</td><td><div class="row"><button class="btn" data-ct="${esc(c.code)}" data-v="${c.active?0:1}">${c.active?"Disable":"Enable"}</button><button class="btn d" data-cd="${esc(c.code)}">Delete</button></div></td></tr>`).join("")}</table>`;
-  $("#cg").onclick=async()=>{const A="ABCDEFGHJKMNPQRSTUVWXYZ23456789",pc=Math.floor(+$("#cpc").value),e=$("#ce");let code=$("#cc").value.trim().toUpperCase();
-    if(!code)code=[...crypto.getRandomValues(new Uint32Array(6))].map(x=>A[x%A.length]).join("");
-    if(!/^[A-Z0-9_-]{3,20}$/.test(code))return e.textContent="Code: 3-20 letters/numbers.";
-    if(!(pc>=1&&pc<=90))return e.textContent="Discount must be 1 to 90 %.";
-    if((await getDoc(doc(db,"coupons",code))).exists())return e.textContent="This code already exists.";
-    await setDoc(doc(db,"coupons",code),{code,percent:pc,maxUses:Math.max(0,Math.floor(+$("#cmu").value)||0),used:0,active:true,createdAt:serverTimestamp()});aCoupons()};
-  document.querySelectorAll("[data-ct]").forEach(b=>b.onclick=async()=>{await updateDoc(doc(db,"coupons",b.dataset.ct),{active:b.dataset.v==="1"});aCoupons()});
-  document.querySelectorAll("[data-cd]").forEach(b=>b.onclick=async()=>{if(confirm("Delete this code?")){await deleteDoc(doc(db,"coupons",b.dataset.cd));aCoupons()}})}
 async function aDelivery(){
   const sn=await getDoc(doc(db,"settings","delivery")),d={shopPincode:"141001",slabs:[{km:50,charge:100,extra:30},{km:100,charge:150,extra:50},{km:200,charge:250,extra:80}],beyond:400,beyondExtra:120,fallback:200,freeAbove:0,...(sn.exists()?sn.data():{})};
   $("#ab").innerHTML=`<div class="panel"><h3>Delivery charges</h3><p class="mut">Charge = price for the first 1 kg (by distance) + extra for each additional kg. Weight is rounded up to full kg. Distance is estimated from the customer's pincode.</p>
