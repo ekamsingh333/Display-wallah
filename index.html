@@ -110,7 +110,7 @@ input::placeholder{color:#a39aa0}.hero{padding:44px 0 10px;animation:fadeRise .7
 <div><b>Policy:</b> No return, no exchange.</div></footer>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import{getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import{getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut,deleteUser,reauthenticateWithPopup}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import{getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,onSnapshot,serverTimestamp,getDocs,collection,query,orderBy,writeBatch,deleteDoc,where,increment}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 /* ====== EDIT THESE ====== */
@@ -203,7 +203,7 @@ async function quote(loc,items,itemsTotal){
   return{charge:free?0:Math.round(rupees*100),km,grams,free}}
 /* Precise Google Maps / GPS location (mandatory at checkout) */
 /* ---- Legal pages: Privacy Policy, Refund & Return Policy, Terms of Use ---- */
-const SHOP_NAME="Display Wallah",POL_DATE="3 October 2026";
+const SHOP_NAME="Display Wallah",GRV_NAME="Owner",POL_DATE="3 October 2026";
 const POL={
 privacy:{t:"Privacy Policy",h:`<p>${SHOP_NAME} (“we”, “us”) sells mobile spare parts and accessories from ${SHOP_ADDR}. This policy explains what personal data we collect through this website and why.</p>
 <h3>What we collect</h3><ul><li>Your Google account name and email (for sign-in).</li><li>Shop code, if you register as a shop owner.</li><li>Contact name, phone number, delivery address, city and pincode.</li><li>Your <b>exact location (GPS / Google Maps)</b>, only when you tap “Use my exact location” and agree.</li><li>Order details, payment reference (UTR) and delivery status.</li></ul>
@@ -211,7 +211,8 @@ privacy:{t:"Privacy Policy",h:`<p>${SHOP_NAME} (“we”, “us”) sells mobile
 <h3>Your location</h3><p>Your exact location is used <b>only for delivery of that order</b> and for working out the delivery charge. We do not use it for advertising and we do not sell it. It is shared only with the delivery person or courier/delivery service that delivers your order.</p>
 <h3>Sharing and storage</h3><p>Your data is stored with Google Firebase (Google Cloud), which may keep it on servers outside India. We do not sell your personal data. We share it only with delivery partners (for delivery), our payment/UPI provider (for payment checks) and authorities when the law requires.</p>
 <h3>How long we keep it</h3><p>We keep order and payment records as long as needed for delivery, returns, accounting, tax and legal reasons. You can ask us to delete your exact location and other data that we no longer need.</p>
-<h3>Your rights</h3><p>You may ask to access, correct or delete your data, withdraw your consent (for example for location), or raise a complaint. Email <b>${SHOP_MAIL}</b> or call <b>${SHOP_PHONE}</b>. We aim to reply within 7 days. If we cannot resolve your complaint you may approach the Data Protection Board of India.</p>
+<h3>Your rights</h3><p>You can <b>delete your account yourself</b> using “Delete my account” at the bottom of the site (you must have no order in progress). We then delete your profile and remove your name, phone, address and location from your past orders, keeping only anonymous order and payment records needed for accounting. You may also ask to access or correct your data, withdraw your consent (for example for location), or raise a complaint. Email <b>${SHOP_MAIL}</b> or call <b>${SHOP_PHONE}</b>. See “Grievance Redressal” below for how we handle complaints.</p>
+<h3>Grievance Redressal</h3><p>If you have a complaint about an order, your data or this website, contact our Grievance Officer:<br><b>${GRV_NAME}, ${SHOP_NAME}</b><br>${SHOP_ADDR}<br>Phone ${SHOP_PHONE} · Email ${SHOP_MAIL}</p><p>We will acknowledge your complaint within <b>48 hours</b> and aim to resolve it within <b>30 days</b>. If you are not satisfied with our response on a data-protection matter, you may approach the Data Protection Board of India.</p>
 <h3>Security</h3><p>We use Google sign-in and access rules so that you can see only your own orders. No system is completely secure, but we take reasonable steps to protect your data and will inform affected users and authorities if a breach occurs, as required by law.</p>
 <h3>Children</h3><p>This site is for people aged 18 and above. If you are under 18, please order only with a parent or guardian.</p>
 <h3>Changes</h3><p>We may update this policy and will change the date above when we do.</p>`},
@@ -236,8 +237,39 @@ function showPolicy(k){const P=POL[k];if(!P)return;
   o.innerHTML=`<div style="background:#fff;color:#282328;width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));line-height:1.65;font-size:14.5px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2 style="margin:0;font-size:20px">${P.t}</h2><button class="btn" id="polx" type="button">Close</button></div><p style="color:#777;margin:6px 0 14px;font-size:12.5px">Last updated: ${POL_DATE}</p>${P.h}</div>`;
   document.body.appendChild(o);o.onclick=e=>{if(e.target===o)o.remove()};document.getElementById("polx").onclick=()=>o.remove()}
 const wirePol=()=>document.querySelectorAll("[data-p]").forEach(a=>a.onclick=e=>{e.preventDefault();showPolicy(a.dataset.p)});
+async function delAccount(){
+  document.getElementById("delov")?.remove();
+  const o=document.createElement("div");o.id="delov";
+  o.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(20,10,12,.55);display:flex;align-items:flex-end;justify-content:center";
+  o.innerHTML=`<div style="background:#fff;color:#282328;width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));line-height:1.6;font-size:14.5px"><h2 style="margin:0 0 8px;color:#d51c36">Delete my account</h2><p style="margin:0 0 10px">This permanently deletes your account and removes your name, phone, address and location from your past orders. We keep only anonymous order and payment records needed for accounting. If you registered with a shop code, that code cannot be used again. <b>This cannot be undone.</b></p><p style="margin:0 0 8px">Type <b>DELETE</b> to confirm, then sign in with Google once more.</p><input id="dtx" autocomplete="off" placeholder="DELETE"><p class="err" id="dem"></p><div style="display:flex;gap:10px"><button class="btn" id="dcn" type="button" style="flex:1">Cancel</button><button class="btn d" id="dgo" type="button" style="flex:1">Delete permanently</button></div></div>`;
+  document.body.appendChild(o);
+  $("#dcn").onclick=()=>o.remove();
+  $("#dgo").onclick=async()=>{const em=$("#dem"),b=$("#dgo");let unsubbed=false,committed=false;
+    if($("#dtx").value.trim()!=="DELETE")return em.textContent="Type DELETE to confirm.";
+    b.disabled=true;em.textContent="Checking…";
+    try{
+      const u=auth.currentUser;
+      await reauthenticateWithPopup(u,new GoogleAuthProvider());
+      const snap=await getDocs(query(collection(db,"orders"),where("uid","==",u.uid)));
+      if(snap.docs.some(d=>{const x=d.data();return x.paymentStatus==="VERIFYING"||(x.paymentStatus==="PAID"&&(x.trackStatus||"placed")!=="delivered")})){
+        em.textContent="You have an order in progress. Please wait until it is delivered, or call us on "+SHOP_PHONE+".";b.disabled=false;return}
+      em.textContent="Deleting…";
+      const w=writeBatch(db);
+      snap.docs.forEach(d=>w.update(d.ref,{shipping:{name:"Deleted user",phone:"",address:"",city:"",pincode:""},userEmail:"",shopCode:"",deletedAt:serverTimestamp()}));
+      w.delete(doc(db,"users",u.uid));
+      S.unsub&&S.unsub();S.unsub=null;unsubbed=true;
+      await w.commit();committed=true;
+      S.lm="Your account has been deleted.";
+      await deleteUser(u);
+      o.remove()}
+    catch(x){
+      const c=x&&x.code;
+      if(committed){S.lm="Your data was deleted. Please sign in again to finish.";o.remove();return signOut(auth)}
+      if(unsubbed&&auth.currentUser)startApp(auth.currentUser);
+      em.textContent=c==="auth/popup-closed-by-user"||c==="auth/cancelled-popup-request"?"Cancelled. Please confirm with Google to delete.":c==="permission-denied"?"Could not delete. Please call us on "+SHOP_PHONE+".":"Could not delete your account. Try again.";
+      b.disabled=false}}}
 function foot(){const f=$("#ft");if(!f)return;
-  f.innerHTML=`<div style="padding:22px 16px calc(90px + env(safe-area-inset-bottom));text-align:center;font-size:12.5px;color:#777;line-height:1.8"><div><a href="#" data-p="privacy">Privacy Policy</a> · <a href="#" data-p="refund">Refund &amp; Return Policy</a> · <a href="#" data-p="terms">Terms of Use</a></div><div>${SHOP_NAME} · ${SHOP_ADDR}</div><div>📞 ${SHOP_PHONE} · ✉ ${SHOP_MAIL}</div><div>Complaints &amp; data requests: ${SHOP_MAIL}</div></div>`;wirePol()}
+  f.innerHTML=`<div style="padding:22px 16px calc(90px + env(safe-area-inset-bottom));text-align:center;font-size:12.5px;color:#777;line-height:1.8"><div><a href="#" data-p="privacy">Privacy Policy</a> · <a href="#" data-p="refund">Refund &amp; Return Policy</a> · <a href="#" data-p="terms">Terms of Use</a></div><div>${SHOP_NAME} · ${SHOP_ADDR}</div><div>📞 ${SHOP_PHONE} · ✉ ${SHOP_MAIL}</div><div>Grievance Officer: ${GRV_NAME}, ${SHOP_NAME} · ${SHOP_PHONE} · ${SHOP_MAIL}</div><div>Complaints are acknowledged within 48 hours and resolved within 30 days.</div>${S.profile&&!isAdmin()?'<div style="margin-top:6px"><a href="#" id="dela" style="color:#d51c36">Delete my account</a></div>':""}</div>`;wirePol();$("#dela")&&($("#dela").onclick=e=>{e.preventDefault();delAccount()})}
 const MAX_ACC=150,mapsUrl=(la,ln)=>"https://www.google.com/maps/search/?api=1&query="+la+","+ln;
 const dLabel=q=>q.free?"free delivery":q.zone==="ludhiana"?"Ludhiana"+(q.km?` ~${q.km} km`:"")+(q.approx?", est.":""):(q.zone==="punjab"?"Punjab":"Outside Punjab")+` · ${q.kg} kg`;
 
