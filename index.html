@@ -265,7 +265,9 @@ async function aOrders(){
 /* ---- My orders + tracking ---- */
 const TR=[["placed","Order placed","🧾"],["packed","Packed","📦"],["shipped","Shipped","🚚"],["out_for_delivery","Out for delivery","🛵"],["delivered","Delivered","✅"]];
 const dt=x=>x?(x.toDate?x.toDate():new Date(x)).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}):"";
-async function moFetch(){
+const trkApi=async(path,body)=>{const r=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({idToken:await auth.currentUser.getIdToken(),...body})}),d=await r.json();if(!r.ok)throw d.error;return d};
+async function moFetch(){try{const d=await trkApi("/api/my-orders",{});S.mo=d.orders;return d.orders}catch(e){return moFetchFs()}}
+async function moFetchFs(){
   const u=auth.currentUser,seen={},out=[];
   const rs_=await Promise.allSettled(["uid","userId"].map(f=>getDocs(query(collection(db,"orders"),where(f,"==",u.uid)))));
   if(rs_.every(r=>r.status==="rejected"))throw"Could not load your orders. Try again.";
@@ -299,8 +301,8 @@ const trkCell=o=>o.paymentStatus!=="PAID"?'<span class="mut">—</span>':`<div c
 const TF={packed:"packedAt",shipped:"shippedAt",out_for_delivery:"outAt",delivered:"deliveredAt"};
 function wireTrk(){document.querySelectorAll("[data-ot]").forEach(b=>b.onclick=async()=>{
   document.querySelectorAll("[data-ot]").forEach(x=>x.disabled=true);
-  try{const st=b.dataset.os,k=TF[st],up={trackStatus:st};if(k&&!(await getDoc(doc(db,"orders",b.dataset.ot))).data()?.[k])up[k]=new Date().toISOString();await updateDoc(doc(db,"orders",b.dataset.ot),up)}
-  catch(x){alert(typeof x==="string"?x:"Could not update the order status. Try again.")}
+  try{try{await trkApi("/api/update-order-status",{orderId:b.dataset.ot,status:b.dataset.os})}catch(e1){const st=b.dataset.os,k=TF[st],up={trackStatus:st};if(k&&!(await getDoc(doc(db,"orders",b.dataset.ot))).data()?.[k])up[k]=new Date().toISOString();await updateDoc(doc(db,"orders",b.dataset.ot),up)}}
+  catch(x){alert("Could not update the order status. "+(typeof x==="string"?x:(x&&(x.code||x.message))||""))}
   aOrders()})}
 const SAMPLES=[["iPhone 11 Display (OEM)","Displays",185000,20,200],["Samsung A12 Battery","Batteries",42000,50,60],["Type-C Charging Port Flex","Ports",9000,100,10],["Redmi Note 10 Back Glass","Back Glass",28000,30,40],["Tempered Glass 9H (pack of 10)","Accessories",15000,80,150],["Fast Charger 33W","Accessories",35000,40,120]];
 const shrink=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,500/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.72))};im.onerror=rej;im.src=r.result};r.onerror=rej;r.readAsDataURL(f)});
