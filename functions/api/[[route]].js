@@ -19,10 +19,11 @@ const toF = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, toV(
 const FS = (env) => `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 async function accessToken(env) {
+  const sa = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
   const now = Math.floor(Date.now() / 1000);
   const head = b64u(enc.encode(JSON.stringify({ alg: "RS256", typ: "JWT" })));
-  const claim = b64u(enc.encode(JSON.stringify({ iss: env.FIREBASE_CLIENT_EMAIL, scope: "https://www.googleapis.com/auth/datastore", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 })));
-  const pem = env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n").replace(/-----[^-]+-----/g, "").replace(/\s/g, "");
+  const claim = b64u(enc.encode(JSON.stringify({ iss: sa.client_email, scope: "https://www.googleapis.com/auth/datastore", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 })));
+  const pem = sa.private_key.replace(/\\n/g, "\n").replace(/-----[^-]+-----/g, "").replace(/\s/g, "");
   const key = await crypto.subtle.importKey("pkcs8", Uint8Array.from(atob(pem), (c) => c.charCodeAt(0)), { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, enc.encode(head + "." + claim));
   const r = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -107,6 +108,7 @@ async function settleOrder(env, t, txnid) {
   if (v.state === "failed") { if (o.paymentStatus === "PENDING") await fsPatch(env, t, "orders/" + txnid, { paymentStatus: "FAILED" }); return "failed"; }
   return "pending";
 }
+
 /* ---------- delivery charge by distance ---------- */
 const DEF = { shopPincode: "141001", slabs: [{ km: 50, charge: 100, extra: 30 }, { km: 100, charge: 150, extra: 50 }, { km: 200, charge: 250, extra: 80 }], beyond: 400, beyondExtra: 120, fallback: 200, freeAbove: 0 };
 const hav = (a, b) => { const R = 6371, r = (x) => x * Math.PI / 180, dA = r(b.lat - a.lat), dO = r(b.lng - a.lng),
@@ -262,26 +264,4 @@ async function updateOrderStatus(env, req) {
   if (!o) throw "Order not found.";
   if (o.paymentStatus !== "PAID") throw "Only paid orders can be tracked.";
   const upd = { trackStatus: status, trackUpdatedAt: new Date() };
-  TRACK.forEach((k, j) => { if (TRACK_TIME[k]) upd[TRACK_TIME[k]] = j === i ? new Date() : j > i ? null : undefined; });
-  Object.keys(upd).forEach((k) => upd[k] === undefined && delete upd[k]);
-  await fsPatch(env, t, "orders/" + id, upd);
-  return { ok: true, status };
-}
-export async function onRequestPost({ request, env, params }) {
-  const route = [].concat(params.route || [])[0];
-  try {
-    if (route === "delivery-quote") return J(await deliveryQuote(env, request));
-    if (route === "create-order") return J(await createOrder(env, request));
-    if (route === "payu-return") return await payuReturn(env, request);
-    if (route === "payu-webhook") return await payuWebhook(env, request);
-    if (route === "check-payment") return J(await checkPayment(env, request));
-    if (route === "my-orders") return J(await myOrders(env, request));
-    if (route === "update-order-status") return J(await updateOrderStatus(env, request));
-    return J({ error: "Not found" }, 404);
-  } catch (e) {
-    if (typeof e !== "string") console.error("API error [" + route + "]", (e && e.stack) || e);
-    return J({ error: typeof e === "string" ? e : "Server error: " + ((e && e.message) || "unknown") }, typeof e === "string" ? 400 : 500);
-  }
-    }
-
-    
+  TRACK.forEach(
