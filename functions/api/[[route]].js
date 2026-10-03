@@ -19,11 +19,10 @@ const toF = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, toV(
 const FS = (env) => `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 async function accessToken(env) {
-  const sa = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
   const now = Math.floor(Date.now() / 1000);
   const head = b64u(enc.encode(JSON.stringify({ alg: "RS256", typ: "JWT" })));
-  const claim = b64u(enc.encode(JSON.stringify({ iss: sa.client_email, scope: "https://www.googleapis.com/auth/datastore", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 })));
-  const pem = sa.private_key.replace(/\\n/g, "\n").replace(/-----[^-]+-----/g, "").replace(/\s/g, "");
+  const claim = b64u(enc.encode(JSON.stringify({ iss: env.FIREBASE_CLIENT_EMAIL, scope: "https://www.googleapis.com/auth/datastore", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 })));
+  const pem = env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n").replace(/-----[^-]+-----/g, "").replace(/\s/g, "");
   const key = await crypto.subtle.importKey("pkcs8", Uint8Array.from(atob(pem), (c) => c.charCodeAt(0)), { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, enc.encode(head + "." + claim));
   const r = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -238,7 +237,7 @@ async function checkPayment(env, req) {
 /* ---------- order tracking: My Orders + admin status updates ---------- */
 const TRACK = ["placed", "packed", "shipped", "out_for_delivery", "delivered"];
 const TRACK_TIME = { packed: "packedAt", shipped: "shippedAt", out_for_delivery: "outAt", delivered: "deliveredAt" };
-const OWNERS = ["ekamsinghlehal@gmail.com", "displaywallahoffical@gmail.com"];
+const OWNERS = ["displaywallahoffical@gmail.com"];
 async function myOrders(env, req) {
   const { idToken } = await req.json(), t = await accessToken(env), me = await whoIs(env, idToken);
   const r = await fetch(`${FS(env)}:runQuery`, { method: "POST", headers: H(t), body: JSON.stringify({ structuredQuery: {
@@ -254,9 +253,8 @@ async function myOrders(env, req) {
 }
 async function updateOrderStatus(env, req) {
   const { idToken, orderId, status } = await req.json(), t = await accessToken(env), me = await whoIs(env, idToken);
-  const envAdmins = (env.ADMIN_EMAILS || "").toLowerCase().split(",").map((x) => x.trim());
-  const isAdm = me.verified && (OWNERS.includes(me.email) || envAdmins.includes(me.email) || !!(await fsGet(env, t, "admins/" + encodeURIComponent(me.email), ["email"])));
-  if (!isAdm) throw "Only admins can update order status.";
+  const isAdm = me.verified && OWNERS.includes(me.email);   // only the owner can change order status
+  if (!isAdm) throw "Only the owner can update order status.";
   const id = String(orderId || ""), i = TRACK.indexOf(status);
   if (!/^[A-Za-z0-9]{10,25}$/.test(id)) throw "Order not found.";
   if (i < 0) throw "Invalid status.";
@@ -264,25 +262,6 @@ async function updateOrderStatus(env, req) {
   if (!o) throw "Order not found.";
   if (o.paymentStatus !== "PAID") throw "Only paid orders can be tracked.";
   const upd = { trackStatus: status, trackUpdatedAt: new Date() };
-  TRACK.forEach(
-    (k, j) => { if (TRACK_TIME[k]) upd[TRACK_TIME[k]] = j === i ? new Date() : j > i ? null : undefined; });
+  TRACK.forEach((k, j) => { if (TRACK_TIME[k]) upd[TRACK_TIME[k]] = j === i ? new Date() : j > i ? null : undefined; });
   Object.keys(upd).forEach((k) => upd[k] === undefined && delete upd[k]);
-  await fsPatch(env, t, "orders/" + id, upd);
-  return { ok: true, status };
-}
-export async function onRequestPost({ request, env, params }) {
-  const route = [].concat(params.route || [])[0];
-  try {
-    if (route === "delivery-quote") return J(await deliveryQuote(env, request));
-    if (route === "create-order") return J(await createOrder(env, request));
-    if (route === "payu-return") return await payuReturn(env, request);
-    if (route === "payu-webhook") return await payuWebhook(env, request);
-    if (route === "check-payment") return J(await checkPayment(env, request));
-    if (route === "my-orders") return J(await myOrders(env, request));
-    if (route === "update-order-status") return J(await updateOrderStatus(env, request));
-    return J({ error: "Not found" }, 404);
-  } catch (e) {
-    if (typeof e !== "string") console.error("API error [" + route + "]", (e && e.stack) || e);
-    return J({ error: typeof e === "string" ? e : "Server error: " + ((e && e.message) || "unknown") }, typeof e === "string" ? 400 : 500);
-  }
-}
+  await fsPatch(env, t, "orders/" + id, upd
