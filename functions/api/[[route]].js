@@ -1,4 +1,4 @@
-// Cloudflare Pages Function: /api/delivery-quote, /api/create-order, /api/payu-return, /api/payu-webhook, /api/check-payment
+// Cloudflare Pages Function: /api/delivery-quote, /api/create-order, /api/payu-return, /api/payu-webhook, /api/check-payment, /api/my-orders, /api/update-order-status
 // PayU hosted-page payments. Every payment is verified on the server (PayU signature + PayU verify_payment API) before an order is marked PAID.
 // Shop owners (users/{uid}.type === "shop") get SHOP_OFF % off every product.
 const SHOP_OFF = 50;
@@ -173,22 +173,22 @@ async function deliveryQuote(env, req) {
   const { idToken, items, pincode, coupon } = await req.json(), t = await accessToken(env);
   const { prof } = await authUser(env, t, idToken);
   const off = isShop(prof) ? SHOP_OFF : 0;
-  const { sub } = await priceItems(env, t, items, off);
+  const { sub, grams } = await priceItems(env, t, items, off);
   let cp = { discount: 0, percent: 0, code: "" }, couponError = "";
   try { cp = await applyCoupon(env, t, coupon, sub); } catch (e) { if (typeof e !== "string") throw e; couponError = e; }
   const pin = String(pincode || "").trim();
   if (!/^[1-9]\d{5}$/.test(pin)) return { charge: 0, km: 0, nopin: true, subtotal: sub, ...cp, couponError };
-  const q = await quote(env, t, pin, sub - cp.discount);
+  const q = await quote(env, t, pin, sub - cp.discount, grams);
   return { ...q, subtotal: sub, ...cp, couponError };
 }
 async function createOrder(env, req) {
   const { idToken, items, shipping, coupon } = await req.json(), t = await accessToken(env);
   const { me, prof } = await authUser(env, t, idToken);
   const off = isShop(prof) ? SHOP_OFF : 0;
-  const { lines, sub } = await priceItems(env, t, items, off);
+  const { lines, sub, grams } = await priceItems(env, t, items, off);
   const cp = await applyCoupon(env, t, coupon, sub);
   const s = shipping || {};
-  const q = await quote(env, t, String(s.pincode || "").trim(), sub - cp.discount);
+  const q = await quote(env, t, String(s.pincode || "").trim(), sub - cp.discount, grams);
   const amount = sub - cp.discount + q.charge;
   if (amount < 100) throw "Invalid amount.";
   const txnid = crypto.randomUUID().replace(/-/g, "").slice(0, 24), amt = (amount / 100).toFixed(2), info = "Spare parts order";
@@ -196,7 +196,7 @@ async function createOrder(env, req) {
   const phone = String(s.phone || "").replace(/\D/g, "").slice(-10);
   const hash = await sha512([env.PAYU_KEY, txnid, amt, info, fn, me.email, "", "", "", "", "", "", "", "", "", "", env.PAYU_SALT].join("|"));
   await fsCreate(env, t, "orders", txnid, { userId: me.uid, email: me.email, shopCode: (prof && prof.shopCode) || (prof ? "" : "ADMIN"), shopOff: off, items: lines, itemsTotal: sub,
-    couponCode: cp.code, couponPercent: cp.percent, discount: cp.discount, shippingCharge: q.charge, distanceKm: q.km, amount, paymentStatus: "PENDING",
+    couponCode: cp.code, couponPercent: cp.percent, discount: cp.discount, shippingCharge: q.charge, distanceKm: q.km, weightGrams: grams, amount, paymentStatus: "PENDING",
     shipping: { name: String(s.name || "").slice(0, 100), phone: String(s.phone || "").slice(0, 20), address: String(s.address || "").slice(0, 300), city: String(s.city || "").slice(0, 80), pincode: String(s.pincode || "").slice(0, 10) },
     payuTxnId: txnid, createdAt: new Date() });
   const back = new URL(req.url).origin + "/api/payu-return";
@@ -234,17 +234,33 @@ async function checkPayment(env, req) {
   if (!o || o.userId !== me.uid) throw "Order not found.";
   return { status: await settleOrder(env, t, id) };
 }
-export async function onRequestPost({ request, env, params }) {
-  const route = [].concat(params.route || [])[0];
-  try {
-    if (route === "delivery-quote") return J(await deliveryQuote(env, request));
-    if (route === "create-order") return J(await createOrder(env, request));
-    if (route === "payu-return") return await payuReturn(env, request);
-    if (route === "payu-webhook") return await payuWebhook(env, request);
-    if (route === "check-payment") return J(await checkPayment(env, request));
-    return J({ error: "Not found" }, 404);
-  } catch (e) {
-    return J({ error: typeof e === "string" ? e : "Server error" }, typeof e === "string" ? 400 : 500);
-  }
-                                                                }
-    
+/* ---------- order tracking: My Orders + admin status updates ---------- */
+const TRACK = ["placed", "packed", "shipped", "out_for_delivery", "delivered"];
+const TRACK_TIME = { packed: "packedAt", shipped: "shippedAt", out_for_delivery: "outAt", delivered: "deliveredAt" };
+const OWNERS = ["ekamsinghlehal@gmail.com", "displaywallahoffical@gmail.com"];
+async function myOrders(env, req) {
+  const { idToken } = await req.json(), t = await accessToken(env), me = await whoIs(env, idToken);
+  const r = await fetch(`${FS(env)}:runQuery`, { method: "POST", headers: H(t), body: JSON.stringify({ structuredQuery: {
+    from: [{ collectionId: "orders" }], where: { fieldFilter: { field: { fieldPath: "userId" }, op: "EQUAL", value: { stringValue: me.uid } } }, limit: 100 } }) });
+  if (!r.ok) throw new Error("Firestore query failed " + r.status);
+  const orders = (await r.json()).filter((x) => x.document).map((x) => ({ id: x.document.name.split("/").pop(), ...fromF(x.document.fields || {}) }))
+    .filter((o) => o.paymentStatus === "PAID")
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .map((o) => ({ id: o.id, createdAt: o.createdAt, items: o.items || [], itemsTotal: o.itemsTotal || 0, discount: o.discount || 0, couponCode: o.couponCode || "",
+      shippingCharge: o.shippingCharge || 0, amount: o.amount || 0, shipping: o.shipping || {}, trackStatus: TRACK.includes(o.trackStatus) ? o.trackStatus : "placed",
+      paidAt: o.paidAt || o.createdAt, packedAt: o.packedAt || null, shippedAt: o.shippedAt || null, outAt: o.outAt || null, deliveredAt: o.deliveredAt || null }));
+  return { orders };
+}
+async function updateOrderStatus(env, req) {
+  const { idToken, orderId, status } = await req.json(), t = await accessToken(env), me = await whoIs(env, idToken);
+  const envAdmins = (env.ADMIN_EMAILS || "").toLowerCase().split(",").map((x) => x.trim());
+  const isAdm = me.verified && (OWNERS.includes(me.email) || envAdmins.includes(me.email) || !!(await fsGet(env, t, "admins/" + encodeURIComponent(me.email), ["email"])));
+  if (!isAdm) throw "Only admins can update order status.";
+  const id = String(orderId || ""), i = TRACK.indexOf(status);
+  if (!/^[A-Za-z0-9]{10,25}$/.test(id)) throw "Order not found.";
+  if (i < 0) throw "Invalid status.";
+  const o = await fsGet(env, t, "orders/" + id, ["paymentStatus"]);
+  if (!o) throw "Order not found.";
+  if (o.paymentStatus !== "PAID") throw "Only paid orders can be tracked.";
+  const upd = { trackStatus: status, trackUpdatedAt: new Date() };
+  TRACK.forEach((k, j) => { if (TRACK_TIME[k]) upd[
