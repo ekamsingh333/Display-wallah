@@ -204,18 +204,13 @@ async function geo(p){if(p in GEO)return GEO[p];let r=null;
   return GEO[p]=r}
 const hav=(a,b)=>{const t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lng-a.lng),h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 6371*2*Math.asin(Math.sqrt(h))};
 const parseLL=s=>{const m=String(s||"").match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);return m?{lat:+m[1],lng:+m[2]}:null};
-/* returns {charge (paise), zone, km, kg, approx, free} */
+/* Delivery charges removed: delivery is arranged by the shop, nothing is added to the order total */
 async function quote(pin,items,itemsTotal){
-  if(!/^[1-9]\d{5}$/.test(pin))throw"Enter a valid 6-digit pincode.";
-  const c=await delCfg(),info=await pinInfo(pin),st=info.state||"",grams=items.reduce((a,i)=>a+(+i.p.weight||0)*i.q,0),kg=Math.max(1,Math.ceil(grams/1000));
-  let zone=st.includes("punjab")?"punjab":(st==="near"||NEAR.some(n=>st.includes(n)))?"near":"far",km=0,approx=false,rupees=0;
-  if(zone==="punjab"&&info.district.includes("ludhiana")){
-    const shop=parseLL(c.shopLatLng)||await geo(c.shopPincode),dest=await geo(pin),sl=[...c.lud].sort((a,b)=>a.km-b.km);
-    if(shop&&dest){km=Math.round(hav(shop,dest)*ROAD*10)/10;const s=sl.find(x=>km<=x.km);if(s){zone="ludhiana";rupees=s.charge}}
-    else{zone="ludhiana";approx=true;rupees=c.fallback}}
-  if(zone!=="ludhiana")rupees=kg*(zone==="punjab"?c.punjabKg:zone==="near"?c.nearKg:c.farKg);
-  const free=c.freeAbove>0&&itemsTotal>=c.freeAbove*100;
-  return{charge:free?0:Math.round(rupees*100),zone,km,kg,approx,free,grams}}
+  if(!/^[1-9]\d{5}$/.test(pin))throw "Enter a valid 6-digit pincode.";
+  const grams=items.reduce((a,i)=>a+(+i.p.weight||0)*i.q,0);
+  return{charge:0,zone:"",km:0,kg:0,approx:false,free:false,grams}}
+/* Precise Google Maps / GPS location (mandatory at checkout) */
+const MAX_ACC=150,mapsUrl=(la,ln)=>"https://www.google.com/maps/search/?api=1&query="+la+","+ln;
 const dLabel=q=>q.free?"free delivery":q.zone==="ludhiana"?"Ludhiana"+(q.km?` ~${q.km} km`:"")+(q.approx?", est.":""):(q.zone==="punjab"?"Punjab":"Outside Punjab")+` · ${q.kg} kg`;
 
 function contact(){
@@ -285,38 +280,48 @@ function cart(){S.sh=S.sh||{};
   const items=Object.entries(S.cart).map(([id,q])=>({p:S.products.find(x=>x.id===id),q})).filter(i=>i.p),total=items.reduce((a,i)=>a+sp(i.p.price)*i.q,0);
   $("#dr").innerHTML=`<div class="drawer"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Your cart</h2><button class="btn" id="x">Close</button></div>
   ${items.length?items.map(i=>`<div class="row" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)"><div>${esc(i.p.name)}<div class="mut">${rs(sp(i.p.price))} × ${i.q}</div></div><div class="row"><button class="btn" data-m="${i.p.id}">−</button><button class="btn" data-pl="${i.p.id}">+</button></div></div>`).join("")+`
-  <div class="row" style="justify-content:space-between"><span class="mut">Items</span><span>${rs(total)}</span></div><div class="row" style="justify-content:space-between;margin-top:6px"><span class="mut">Delivery <span id="dk"></span></span><span id="dl">Enter pincode</span></div><h3 style="display:flex;justify-content:space-between"><span>Total</span><span id="tt">${rs(total)}</span></h3><p class="mut">Delivery details (shipping is arranged offline)</p>
+  <div class="row" style="justify-content:space-between"><span class="mut">Items</span><span>${rs(total)}</span></div><h3 style="display:flex;justify-content:space-between"><span>Total</span><span id="tt">${rs(total)}</span></h3><p class="mut">Delivery details (shipping is arranged offline)</p>
   <input id="n" placeholder="Contact name" value="${esc(S.sh.n||"")}"><input id="ph" placeholder="Phone" inputmode="tel" value="${esc(S.sh.ph||"")}"><input id="ad" placeholder="Full address" value="${esc(S.sh.ad||"")}"><input id="ci" placeholder="City" value="${esc(S.sh.ci||"")}"><input id="pi" placeholder="Pincode (6 digits)" inputmode="numeric" maxlength="6" value="${esc(S.sh.pi||"")}">
+  <div id="lc" style="margin:12px 0 4px;padding:12px;border:1px solid var(--line);border-radius:14px"></div>
   <p class="err" id="e"></p><button class="btn p" id="pay" style="width:100%">Place order &amp; pay <span id="pt">${rs(total)}</span></button>`:'<p class="mut">Your cart is empty.</p>'}</div>`;
   $("#x").onclick=()=>$("#dr").innerHTML="";
   document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{const id=b.dataset.m;S.cart[id]--;if(S.cart[id]<1)delete S.cart[id];render();cart()});
   document.querySelectorAll("[data-pl]").forEach(b=>b.onclick=()=>{const id=b.dataset.pl,p=S.products.find(x=>x.id===id);if(S.cart[id]<p.stock)S.cart[id]++;render();cart()});
   if(items.length){
-    let dq=null,tk=0;
-    const upd=m=>{const ch=dq&&!dq.nopin?dq.charge:0;
-      $("#dl").textContent=m||(dq&&!dq.nopin?(dq.charge?rs(dq.charge):"FREE"):"Enter pincode");
-      $("#dk").textContent=dq&&!dq.nopin?`(${dLabel(dq)})`:"";
-      const t=total+ch;$("#tt").textContent=rs(t);$("#pt").textContent=rs(t)};
-    const getQ=async()=>{const my=++tk;upd("Calculating…");
-      try{const d=await quote($("#pi").value.trim(),items,total);if(my===tk){dq=d;upd()}}
-      catch(x){if(my===tk){dq=null;upd(typeof x==="string"?x:"Could not calculate")}}};
-    ["n","ph","ad","ci","pi"].forEach(k=>$("#"+k).oninput=()=>{S.sh[k]=$("#"+k).value;if(k==="pi"){if($("#pi").value.trim().length===6)getQ();else if(dq){dq={...dq,nopin:true};upd()}}});
-    if(/^[1-9]\d{5}$/.test($("#pi").value.trim()))getQ()}
+    ["n","ph","ad","ci","pi"].forEach(k=>$("#"+k).oninput=()=>{S.sh[k]=$("#"+k).value});
+    const lc=$("#lc"),showLoc=(msg,bad)=>{const L=S.sh.loc;
+      lc.innerHTML=`<b>📍 Exact location (required)</b><div class="mut" style="margin:4px 0 8px">Share your precise Google Maps location so delivery reaches the right place.</div>`
+      +(L?`<iframe src="https://maps.google.com/maps?q=${L.lat},${L.lng}&z=17&output=embed" style="width:100%;height:170px;border:0;border-radius:10px" loading="lazy"></iframe>
+        <div class="mut" style="margin:6px 0">✅ Location saved (accuracy ~${Math.round(L.acc)} m) · <a href="${mapsUrl(L.lat,L.lng)}" target="_blank" rel="noopener">Open in Google Maps</a></div>`:"")
+      +`<button class="btn" id="gl" type="button" style="width:100%">${L?"Update location":"📍 Use my exact location"}</button>
+        <div id="lm" style="margin-top:8px;min-height:18px;${bad?"color:var(--r)":"color:var(--mut)"}">${msg||""}</div>`;
+      $("#gl").onclick=getLoc};
+    const getLoc=()=>{const b=$("#gl"),m=$("#lm");
+      if(!navigator.geolocation){m.style.color="var(--r)";m.textContent="This browser can't share location. Please use Chrome on your phone.";return}
+      b.disabled=true;m.style.color="var(--mut)";m.textContent="Getting your exact location… please tap Allow.";
+      navigator.geolocation.getCurrentPosition(p=>{
+        const acc=p.coords.accuracy||0;
+        if(acc>MAX_ACC){showLoc(`Location is not precise enough (~${Math.round(acc)} m). Turn on GPS / high-accuracy location, step outside if needed, and try again.`,true);return}
+        S.sh.loc={lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6),acc};showLoc()},
+      er=>{showLoc(er.code===1?"Location permission denied. Allow location for this site in your browser settings, then tap again.":er.code===3?"Location timed out. Turn on GPS and try again.":"Could not get your location. Try again.",true)},
+      {enableHighAccuracy:true,timeout:25000,maximumAge:0})};
+    showLoc()}
   items.length&&($("#pay").onclick=async()=>{
     const sh={name:$("#n").value.trim(),phone:$("#ph").value.trim(),address:$("#ad").value.trim(),city:$("#ci").value.trim(),pincode:$("#pi").value.trim()};
     if(Object.values(sh).some(v=>!v))return $("#e").textContent="Fill in all delivery details.";
+    const L=S.sh.loc;if(!L)return $("#e").textContent="Please share your exact Google Maps location (tap \"Use my exact location\").";
     const e=$("#e"),btn=$("#pay");btn.disabled=true;e.textContent="";
     try{const q=await quote(sh.pincode,items,total),amount=total+q.charge,ref=doc(collection(db,"orders")),
       o={uid:auth.currentUser.uid,userEmail:auth.currentUser.email||"",shopCode:(S.profile&&S.profile.shopCode)||"",
         items:items.map(i=>({id:i.p.id,name:i.p.name,price:sp(i.p.price),qty:i.q,weight:+i.p.weight||0})),
         itemsTotal:total,shippingCharge:q.charge,amount,distanceKm:q.km||0,weightGrams:q.grams,deliveryZone:q.zone,
-        shipping:sh,paymentStatus:"AWAITING_PAYMENT",method:"upi_qr"};
+        shipping:{...sh,lat:L.lat,lng:L.lng,accuracy:Math.round(L.acc),mapsLink:mapsUrl(L.lat,L.lng)},paymentStatus:"AWAITING_PAYMENT",method:"upi_qr"};
       await setDoc(ref,{...o,createdAt:serverTimestamp()});
-      S.cart={};render();payDrawer({id:ref.id,...o,createdAt:new Date()});
+      S.cart={};S.sh.loc=null;render();payDrawer({id:ref.id,...o,createdAt:new Date()});
     }catch(x){e.textContent=typeof x==="string"?x:"Could not place the order. Try again.";btn.disabled=false}})}
 
 function admin(){
-  const T=[["products","Products"],["codes","Shop codes"],["users","Users"],["orders","Orders"],["delivery","Delivery"],...(isOwner()?[["admins","Admins"]]:[])];
+  const T=[["products","Products"],["codes","Shop codes"],["users","Users"],["orders","Orders"],...(isOwner()?[["admins","Admins"]]:[])];
   $("#main").innerHTML=`<div class="tabs">${T.map(t=>`<button class="btn ${S.tab===t[0]?"on":""}" data-t="${t[0]}">${t[1]}</button>`).join("")}</div><div id="ab" class="scroll">Loading…</div>`;
   document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{S.tab=b.dataset.t;admin()});
   ({codes:aCodes,users:aUsers,orders:aOrders,products:aProducts,admins:aAdmins,delivery:aDelivery})[S.tab]()}
@@ -343,8 +348,8 @@ async function aOrders(){
     rows=f==="all"?all:f==="paid"?all.filter(o=>o.paymentStatus==="PAID"):all.filter(o=>o.paymentStatus==="VERIFYING"),
     pc=o=>o.paymentStatus==="PAID"?"in":o.paymentStatus==="VERIFYING"?"":"out";
   $("#ab").innerHTML=`<div class="tabs" style="margin-top:0">${[["verify","Verify payments ("+nv+")"],["paid","Confirmed"],["all","All orders"]].map(t=>`<button class="btn ${f===t[0]?"on":""}" data-of="${t[0]}">${t[1]}</button>`).join("")}</div>`+
-  (rows.length?`<table><tr><th>Order</th><th>Items</th><th>Total</th><th>Payment</th><th>Ship to</th><th>Tracking</th></tr>${rows.map(o=>`<tr><td>${o.id.slice(0,6)}<div class="mut">${when(o.createdAt)}</div><div class="mut">${esc(o.userEmail||"")}</div><div class="mut mono">${esc(o.shopCode)}</div></td><td>${o.items.map(i=>esc(i.name)+" ×"+i.qty).join("<br>")}</td><td>${rs(o.amount)}<div class="mut">incl. delivery ${rs(o.shippingCharge||0)}<br>${o.distanceKm?o.distanceKm+" km · ":""}${((o.weightGrams||0)/1000).toFixed(1)} kg</div></td>
-  <td class="${pc(o)}">${o.paymentStatus==="VERIFYING"?"VERIFY":o.paymentStatus}<div class="mut mono">${o.utr?"UTR "+esc(o.utr):""}</div>${o.paymentStatus==="VERIFYING"?`<div class="mut">Check ${rs(o.amount)} received</div><div class="trk-adm"><button class="btn p" data-ap="${esc(o.id)}">Approve</button><button class="btn d" data-rj="${esc(o.id)}">Reject</button></div>`:""}</td><td>${esc(o.shipping.name)}, ${esc(o.shipping.phone)}<br>${esc(o.shipping.address)}, ${esc(o.shipping.city)} ${esc(o.shipping.pincode)}</td><td>${trkCell(o)}</td></tr>`).join("")}</table>`:`<p class="mut">${f==="verify"?"No payments waiting to be verified.":"No orders here yet."}</p>`);
+  (rows.length?`<table><tr><th>Order</th><th>Items</th><th>Total</th><th>Payment</th><th>Ship to</th><th>Tracking</th></tr>${rows.map(o=>`<tr><td>${o.id.slice(0,6)}<div class="mut">${when(o.createdAt)}</div><div class="mut">${esc(o.userEmail||"")}</div><div class="mut mono">${esc(o.shopCode)}</div></td><td>${o.items.map(i=>esc(i.name)+" ×"+i.qty).join("<br>")}</td><td>${rs(o.amount)}<div class="mut">${o.shippingCharge?"incl. delivery "+rs(o.shippingCharge)+"<br>":""}${((o.weightGrams||0)/1000).toFixed(1)} kg</div></td>
+  <td class="${pc(o)}">${o.paymentStatus==="VERIFYING"?"VERIFY":o.paymentStatus}<div class="mut mono">${o.utr?"UTR "+esc(o.utr):""}</div>${o.paymentStatus==="VERIFYING"?`<div class="mut">Check ${rs(o.amount)} received</div><div class="trk-adm"><button class="btn p" data-ap="${esc(o.id)}">Approve</button><button class="btn d" data-rj="${esc(o.id)}">Reject</button></div>`:""}</td><td>${esc(o.shipping.name)}, ${esc(o.shipping.phone)}<br>${esc(o.shipping.address)}, ${esc(o.shipping.city)} ${esc(o.shipping.pincode)}${o.shipping.lat?`<br><a href="${mapsUrl(o.shipping.lat,o.shipping.lng)}" target="_blank" rel="noopener">📍 Open in Google Maps</a>`:""}</td><td>${trkCell(o)}</td></tr>`).join("")}</table>`:`<p class="mut">${f==="verify"?"No payments waiting to be verified.":"No orders here yet."}</p>`);
   document.querySelectorAll("[data-of]").forEach(b=>b.onclick=()=>{S.of=b.dataset.of;aOrders()});
   document.querySelectorAll("[data-ap]").forEach(b=>b.onclick=async()=>{
     if(!isOwner())return alert("Only the owner can approve payments.");
@@ -390,8 +395,8 @@ function moTrack(id){
   <div class="trk ${fin?"fin":""}" style="--k:${k};--n:${n};--t:${T}s"><div class="trk-line"><div class="trk-fill"></div></div>
   ${TR.map((t,j)=>`<div class="trk-step ${j<k?"done":j===k?"cur":"todo"}" style="--d:${j<=k?(k?j*(T/k):0):T+.1}s"><div class="trk-dot"><span>${t[2]}</span></div><div class="trk-txt"><b>${t[1]}</b><div class="mut sm">${j<=k?dt(times[j]):"Pending"}</div></div></div>`).join("")}</div>
   <div class="mo-det"><b>Items</b>${o.items.map(it=>`<div class="r"><span>${esc(it.name)} × ${it.qty}</span></div>`).join("")}
-  <div class="r mut" style="margin-top:8px"><span>Items total</span><span>${rs(o.itemsTotal)}</span></div><div class="r mut"><span>Delivery</span><span>${rs(o.shippingCharge)}</span></div><div class="r"><b>Total</b><b>${rs(o.amount)}</b></div>
-  <div style="margin-top:12px"><b>Delivering to</b><div class="mut">${esc(sh.name||"")}${sh.phone?", "+esc(sh.phone):""}<br>${esc(sh.address||"")}, ${esc(sh.city||"")} ${esc(sh.pincode||"")}</div></div></div>
+  <div class="r mut" style="margin-top:8px"><span>Items total</span><span>${rs(o.itemsTotal)}</span></div>${o.shippingCharge?`<div class="r mut"><span>Delivery</span><span>${rs(o.shippingCharge)}</span></div>`:""}<div class="r"><b>Total</b><b>${rs(o.amount)}</b></div>
+  <div style="margin-top:12px"><b>Delivering to</b><div class="mut">${esc(sh.name||"")}${sh.phone?", "+esc(sh.phone):""}<br>${esc(sh.address||"")}, ${esc(sh.city||"")} ${esc(sh.pincode||"")}${sh.lat?`<br><a href="${mapsUrl(sh.lat,sh.lng)}" target="_blank" rel="noopener">📍 View on Google Maps</a>`:""}</div></div></div>
   <button class="btn" id="rf" style="margin-top:14px;width:100%">Refresh status</button></div>`;
   $("#x").onclick=()=>{$("#dr").innerHTML=""};
   $("#rf").onclick=async()=>{const b=$("#rf");b.disabled=true;b.textContent="Refreshing…";try{await moFetch();moTrack(id);S.view==="orders"&&$("#mol")&&moList()}catch(x){b.disabled=false;b.textContent="Could not refresh. Try again."}}}
