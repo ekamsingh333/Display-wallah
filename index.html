@@ -110,7 +110,7 @@ import{getFirestore,doc,getDoc,setDoc,addDoc,updateDoc,onSnapshot,serverTimestam
 
 /* ====== EDIT THESE ====== */
 const firebaseConfig={apiKey:"AIzaSyD4ahz9H3-5kD7rfqowHt3CAPDCjuKbUv0",authDomain:"display-wala.firebaseapp.com",projectId:"display-wala",appId:"1:788299746317:web:6e37f2fbf512a2847b9944"};
-const ADMINS=["ekamsinghlehal@gmail.com"];          // must match firestore.rules
+const ADMINS=["displaywallahoffical@gmail.com"];          // must match firestore.rules
 /* ======================== */
 
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
@@ -297,12 +297,13 @@ function moTrack(id){
   <button class="btn" id="rf" style="margin-top:14px;width:100%">Refresh status</button></div>`;
   $("#x").onclick=()=>{$("#dr").innerHTML=""};
   $("#rf").onclick=async()=>{const b=$("#rf");b.disabled=true;b.textContent="Refreshing…";try{await moFetch();moTrack(id);S.view==="orders"&&$("#mol")&&moList()}catch(x){b.disabled=false;b.textContent="Could not refresh. Try again."}}}
-const trkCell=o=>o.paymentStatus!=="PAID"?'<span class="mut">—</span>':`<div class="trk-adm">${TR.map(t=>`<button class="btn ${(o.trackStatus||"placed")===t[0]?"p":""}" data-ot="${esc(o.id)}" data-os="${t[0]}">${t[1]}</button>`).join("")}</div>`;
+const trkCell=o=>o.paymentStatus!=="PAID"?'<span class="mut">—</span>':!isOwner()?`<span class="mut">${esc((TR.find(t=>t[0]===(o.trackStatus||"placed"))||TR[0])[1])}</span>`:`<div class="trk-adm">${TR.map(t=>`<button class="btn ${(o.trackStatus||"placed")===t[0]?"p":""}" data-ot="${esc(o.id)}" data-os="${t[0]}">${t[1]}</button>`).join("")}</div>`;
 const TF={packed:"packedAt",shipped:"shippedAt",out_for_delivery:"outAt",delivered:"deliveredAt"};
 function wireTrk(){document.querySelectorAll("[data-ot]").forEach(b=>b.onclick=async()=>{
+  if(!isOwner())return alert("Only the owner (displaywallahoffical@gmail.com) can change order status.");
   document.querySelectorAll("[data-ot]").forEach(x=>x.disabled=true);
-  try{try{await trkApi("/api/update-order-status",{orderId:b.dataset.ot,status:b.dataset.os})}catch(e1){const st=b.dataset.os,k=TF[st],up={trackStatus:st};if(k&&!(await getDoc(doc(db,"orders",b.dataset.ot))).data()?.[k])up[k]=new Date().toISOString();await updateDoc(doc(db,"orders",b.dataset.ot),up)}}
-  catch(x){alert("Could not update the order status. "+(typeof x==="string"?x:(x&&(x.code||x.message))||""))}
+  try{try{await trkApi("/api/update-order-status",{orderId:b.dataset.ot,status:b.dataset.os})}catch(e1){S.ae=typeof e1==="string"?e1:(e1&&e1.message)||"no response";const st=b.dataset.os,k=TF[st],up={trackStatus:st};if(k&&!(await getDoc(doc(db,"orders",b.dataset.ot))).data()?.[k])up[k]=new Date().toISOString();await updateDoc(doc(db,"orders",b.dataset.ot),up)}}
+  catch(x){alert("Could not update the order status.\nServer: "+(S.ae||"ok")+"\nDatabase: "+(typeof x==="string"?x:(x&&(x.code||x.message))||""));S.ae=""}
   aOrders()})}
 const SAMPLES=[["iPhone 11 Display (OEM)","Displays",185000,20,200],["Samsung A12 Battery","Batteries",42000,50,60],["Type-C Charging Port Flex","Ports",9000,100,10],["Redmi Note 10 Back Glass","Back Glass",28000,30,40],["Tempered Glass 9H (pack of 10)","Accessories",15000,80,150],["Fast Charger 33W","Accessories",35000,40,120]];
 const shrink=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,500/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.72))};im.onerror=rej;im.src=r.result};r.onerror=rej;r.readAsDataURL(f)});
