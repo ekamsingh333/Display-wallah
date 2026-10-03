@@ -74,6 +74,7 @@ input::placeholder{color:#a39aa0}.hero{padding:44px 0 10px;animation:fadeRise .7
 .mo-top,.mo-foot{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .mo-items{margin:10px 0;color:var(--mut);font-size:13px;line-height:1.5}
 .mo-badge{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:#ffe9eb;color:var(--y);white-space:nowrap}.mo-badge.done{background:#dcf7e8;color:var(--g)}.mo-badge.wait{background:#fff4d6;color:#8a5a00}
+.scan-note{margin-top:14px;padding:11px 13px;border-radius:12px;background:#fff4d6;border:1px solid #f1d78a;color:#5c3d00;font-size:13px;line-height:1.55}
 .qrbox{display:flex;justify-content:center;margin:14px 0 4px}.qrbox img{width:100%;max-width:340px;background:#fff;border-radius:14px;border:1px solid var(--line);padding:6px}
 .wa-box{margin:16px 0;padding:14px;border:1px solid #bfe9d2;background:#effbf4;border-radius:14px;display:flex;flex-direction:column;gap:6px}.wa-btn{background:#25d366;border-color:#25d366;color:#fff;text-align:center;text-decoration:none;margin-top:6px}.wa-btn:hover{background:#1fb858;border-color:#1fb858}
 .ct-card{max-width:520px}.ct-row{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);line-height:1.6}.ct-row:last-of-type{border-bottom:0}.ct-ic{font-size:22px;width:30px;text-align:center}.ct-row a{color:var(--y);font-weight:600;text-decoration:none;word-break:break-all}
@@ -225,14 +226,13 @@ function contact(){
   <div class="ct-row"><span class="ct-ic">💬</span><div><b>WhatsApp broadcast</b><div class="mut sm">Updates and offers</div><a href="${WA_LINK}" target="_blank" rel="noopener">Join the group</a></div></div>
   <p class="mut sm" style="margin:14px 0 0"><b>Policy:</b> No return, no exchange.</p></div>`}
 function payDrawer(o){
-  const amt=(o.amount/100).toFixed(2),oid=o.id.slice(0,6).toUpperCase(),
-    link=`upi://pay?pa=${encodeURIComponent(UPI.id)}&pn=${encodeURIComponent(UPI.name)}&am=${amt}&cu=INR&tn=${encodeURIComponent("Order "+oid)}`;
+  const amt=(o.amount/100).toFixed(2),oid=o.id.slice(0,6).toUpperCase();
   $("#dr").innerHTML=`<div class="drawer"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Pay ${rs(o.amount)}</h2><button class="btn" id="x">Close</button></div>
   <div class="mut sm" style="margin-top:4px">Order #${oid} · please pay within 30 minutes</div>
-  <div class="qrbox"><img src="${QR_IMG}" alt="UPI QR code"></div>
+  <div class="scan-note">📷 <b>Scan this QR from your payment app's scanner</b> (GPay / PhonePe / Paytm → Scan QR).<br>अपने पेमेंट ऐप के स्कैनर से इस QR को स्कैन करें। किसी लिंक या बटन से सीधा पेमेंट न करें।</div><div class="qrbox"><img src="${QR_IMG}" alt="UPI QR code"></div>
   <div class="row" style="justify-content:center;margin-top:10px"><span class="mono sm">${UPI.id}</span><button class="btn" id="cu" style="padding:6px 10px">Copy</button></div>
-  <a class="btn p upi-open" href="${link}">Open UPI app (amount filled in)</a>
-  <p class="mut sm" style="line-height:1.6">Scan with GPay / PhonePe / Paytm, or tap the button above on your phone. Pay exactly <b>${rs(o.amount)}</b>. Then enter the 12-digit <b>UTR / UPI reference number</b> shown in your payment app. Your order is confirmed only after we see the payment.</p>
+  <a class="btn p upi-open" href="${QR_IMG}" download="Display-Wallah-payment-QR.png">Save QR image (phone par scan karne ke liye)</a>
+  <p class="mut sm" style="line-height:1.6">Scan the QR with GPay / PhonePe / Paytm. On one phone: tap <b>Save QR image</b>, then in your payment app choose <b>Scan QR → upload from gallery</b>. Enter the amount <b>${rs(o.amount)}</b> exactly. Then enter the 12-digit <b>UTR / UPI reference number</b> shown in your payment app. Your order is confirmed only after we see the payment.</p>
   <input id="ut" inputmode="numeric" maxlength="12" placeholder="12-digit UTR / UPI Ref No."><p class="err" id="ue"></p>
   <button class="btn p" id="us" style="width:100%">I have paid — submit</button></div>`;
   $("#x").onclick=()=>$("#dr").innerHTML="";
