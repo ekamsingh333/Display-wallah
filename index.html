@@ -83,10 +83,8 @@ input::placeholder{color:#a39aa0}.hero{padding:44px 0 10px;animation:fadeRise .7
 .mo-items{margin:10px 0;color:var(--mut);font-size:13px;line-height:1.5}
 .mo-badge{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:#ffe9eb;color:var(--y);white-space:nowrap}.mo-badge.done{background:#dcf7e8;color:var(--g)}.mo-badge.wait{background:#fff4d6;color:#8a5a00}
 .scan-note{margin-top:14px;padding:11px 13px;border-radius:12px;background:#fff4d6;border:1px solid #f1d78a;color:#5c3d00;font-size:13px;line-height:1.55}
-.qrbox{display:flex;justify-content:center;margin:14px 0 4px}.qrbox img{width:100%;max-width:340px;background:#fff;border-radius:14px;border:1px solid var(--line);padding:6px}
 .wa-box{margin:16px 0;padding:14px;border:1px solid #bfe9d2;background:#effbf4;border-radius:14px;display:flex;flex-direction:column;gap:6px}.wa-btn{background:#25d366;border-color:#25d366;color:#fff;text-align:center;text-decoration:none;margin-top:6px}.wa-btn:hover{background:#1fb858;border-color:#1fb858}
 .ct-card{max-width:520px}.ct-row{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);line-height:1.6}.ct-row:last-of-type{border-bottom:0}.ct-ic{font-size:22px;width:30px;text-align:center}.ct-row a{color:var(--y);font-weight:600;text-decoration:none;word-break:break-all}
-.upi-open{display:block;text-align:center;text-decoration:none;margin:12px 0}
 @keyframes moIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .trk{position:relative;margin:24px 0 10px}
 .trk-line{position:absolute;left:21px;top:23px;width:4px;height:calc(var(--n)*80px);background:var(--line);border-radius:4px;overflow:hidden}
@@ -255,7 +253,6 @@ const ph=n=>"data:image/svg+xml;utf8,"+encodeURIComponent(`<svg xmlns='http://ww
 const WA_LINK="https://chat.whatsapp.com/G8kiWKKqrNJLEYORzWXxUl",SHOP_ADDR="Shop 1, Near Leeford Pharmaceuticals, SBS Nagar, Dhandra Road, Ludhiana",SHOP_MAIL="displaywallahoffical@gmail.com";
 const ROAD=1.3,SHOP_PHONE="8146642614";
 const ms=t=>t?.toMillis?t.toMillis():t?.toDate?t.toDate().getTime():t?new Date(t).getTime():0;
-const expired=()=>false;
 const DEL_DEF={v:3,shopLatLng:"",slabs:[{km:2,charge:50},{km:5,charge:80},{km:10,charge:130}],perKm:10,maxKm:0,freeAbove:0,road:1.3};
 let DELC=null;
 async function delCfg(){if(DELC)return DELC;let d={};try{const x=await getDoc(doc(db,"settings","delivery"));if(x.exists()&&x.data().v===3)d=x.data()}catch{}return DELC={...DEL_DEF,...d}}
@@ -277,12 +274,12 @@ async function quote(loc,items,itemsTotal){
 const SHOP_NAME="Display Wallah",GRV_NAME="Owner",GSTIN="",POL_DATE="3 October 2026";
 const POL={
 privacy:{t:"Privacy Policy",h:`<p>${SHOP_NAME} (“we”, “us”) sells mobile spare parts and accessories from ${SHOP_ADDR}. This policy explains what personal data we collect through this website and why. For this data we are the “Data Fiduciary” under the Digital Personal Data Protection Act, 2023.</p>
-<h3>What we collect</h3><ul><li>Your Google account name and email (for sign-in).</li><li>Shop code, if you register as a shop owner.</li><li>Contact name, phone number, delivery address, city and pincode.</li><li>Your <b>exact location (GPS / Google Maps)</b>, only when you tap “Use my exact location” and agree.</li><li>Order details, payment reference (UTR) and delivery status.</li></ul>
-<h3>Why we collect it</h3><ul><li>To process and deliver your order and show you its status.</li><li>To calculate the delivery charge from the distance between our shop and your location.</li><li>To verify payments, prevent fraud, and keep accounting and legal records.</li><li>To contact you about your order.</li></ul>
+<h3>What we collect</h3><ul><li>Your Google account name and email (for sign-in).</li><li>Shop code, if you register as a shop owner.</li><li>Contact name, phone number, delivery address, city and pincode.</li><li>Your <b>exact location (GPS / Google Maps)</b>, only when you tap “Use my exact location” and agree.</li><li>Order details and delivery status.</li></ul>
+<h3>Why we collect it</h3><ul><li>To process and deliver your order and show you its status.</li><li>To calculate the delivery charge from the distance between our shop and your location.</li><li>To prevent fraud and keep accounting and legal records.</li><li>To contact you about your order.</li></ul>
 <h3>Your location</h3><p>Your exact location is used <b>only for delivery of that order</b> and for working out the delivery charge. We do not use it for advertising and we do not sell it. It is shared only with the delivery person or courier/delivery service that delivers your order.</p>
-<h3>Sharing and storage</h3><p>Your data is stored with Google Firebase (Google Cloud), which may keep it on servers outside India. The site also loads Google Fonts and, after you share your location, a Google Maps preview, so Google may receive your IP address and device details (see our Cookie Policy). We do not sell your personal data. We share it only with delivery partners (for delivery), our payment/UPI provider (for payment checks) and authorities when the law requires.</p>
+<h3>Sharing and storage</h3><p>Your data is stored with Google Firebase (Google Cloud), which may keep it on servers outside India. The site also loads Google Fonts and, after you share your location, a Google Maps preview, so Google may receive your IP address and device details (see our Cookie Policy). We do not sell your personal data. We share it only with delivery partners (for delivery) and authorities when the law requires.</p>
 <h3>How long we keep it</h3><p>We keep order and payment records as long as needed for delivery, returns, accounting, tax and legal reasons. You can ask us to delete your exact location and other data that we no longer need.</p>
-<h3>Your rights</h3><p>You can <b>delete your account yourself</b> using “Delete my account” at the bottom of the site (you must have no order in progress). We then delete your profile and remove your name, phone, address and location from your past orders, keeping only anonymous order and payment records needed for accounting. To <b>correct</b> your data, get a <b>copy</b> of it, ask us to <b>delete</b> specific data, or <b>withdraw consent</b> (for example for location), use “Correct / download / delete my data” at the bottom of the site, or email us. You may also raise a complaint. You may also nominate another person to exercise these rights for you if you die or become unable to. Email <b>${SHOP_MAIL}</b> or call <b>${SHOP_PHONE}</b>. See “Grievance Redressal” below for how we handle complaints.</p>
+<h3>Your rights</h3><p>You can <b>delete your account yourself</b> using “Delete my account” at the bottom of the site (you must have no order in progress). We then delete your profile and remove your name, phone, address and location from your past orders, keeping only anonymous order records needed for accounting. To <b>correct</b> your data, get a <b>copy</b> of it, ask us to <b>delete</b> specific data, or <b>withdraw consent</b> (for example for location), use “Correct / download / delete my data” at the bottom of the site, or email us. You may also raise a complaint. You may also nominate another person to exercise these rights for you if you die or become unable to. Email <b>${SHOP_MAIL}</b> or call <b>${SHOP_PHONE}</b>. See “Grievance Redressal” below for how we handle complaints.</p>
 <h3>Grievance Redressal</h3><p>If you have a complaint about an order, your data or this website, contact our Grievance Officer:<br><b>${GRV_NAME}, ${SHOP_NAME}</b><br>${SHOP_ADDR}<br>Phone ${SHOP_PHONE} · Email ${SHOP_MAIL}</p><p>We will acknowledge your complaint within <b>48 hours</b> and aim to resolve it within <b>30 days</b>. If you are not satisfied with our response on a data-protection matter, you may approach the Data Protection Board of India.</p>
 <h3>Cookies and local storage</h3><p>We use only what is needed to keep you signed in (Google sign-in stores a session in your browser) and to remember your cart. We do not use advertising or tracking cookies.</p>
 <h3>Security</h3><p>We use Google sign-in and access rules so that you can see only your own orders. No system is completely secure, but we take reasonable steps to protect your data and will inform affected users and authorities if a breach occurs, as required by law.</p>
@@ -291,7 +288,7 @@ privacy:{t:"Privacy Policy",h:`<p>${SHOP_NAME} (“we”, “us”) sells mobile
 refund:{t:"Refund &amp; Return Policy",h:`<p>We test parts before dispatch and want you to be happy with your order. Please read these terms.</p>
 <h3>Wrong or damaged item</h3><ul><li>If you receive a wrong, dead-on-arrival or transit-damaged item, tell us within <b>48 hours</b> of delivery on ${SHOP_PHONE} or ${SHOP_MAIL}.</li><li>Please record a clear <b>unboxing video</b> and keep the original packaging. We will arrange a replacement or refund after checking.</li></ul>
 <h3>Not eligible</h3><ul><li>Parts that are installed, physically damaged, broken, burnt, water-damaged or tampered with after delivery.</li><li>Items returned without original packaging or with missing accessories.</li><li>Change-of-mind returns on opened items. Screens and batteries are model-specific, so please confirm the model before ordering.</li></ul>
-<h3>Cancellation</h3><p>You can cancel an order before it is packed or shipped. Contact us immediately. Unpaid orders are cancelled automatically if payment is not submitted within 30 minutes.</p>
+<h3>Cancellation</h3><p>You can cancel an order before it is packed or shipped. Contact us immediately.</p>
 <h3>Refunds</h3><p>Approved refunds are sent to the same UPI/bank account that paid, within <b>5–7 working days</b> of approval. Delivery charges are refunded only if the mistake was ours.</p>
 <h3>Contact</h3><p>${SHOP_NAME}, ${SHOP_ADDR}<br>Phone ${SHOP_PHONE} · Email ${SHOP_MAIL}</p>`},
 terms:{t:"Terms of Use",h:`<p>By creating an account, using this website or placing an order you agree to these terms. If you do not agree, please do not use the site. You confirm that you are <b>18 years or older</b>.</p>
@@ -317,7 +314,7 @@ cookies:{t:"Cookie Policy",h:`<p>This site uses very little browser storage. You
 <h3>No advertising</h3><p>We do not use advertising or cross-site tracking cookies.</p>`},
 shipping:{t:"Shipping &amp; Delivery Policy",h:`<p>We ship from ${SHOP_ADDR}.</p>
 <h3>Delivery charge</h3><p>The delivery charge is worked out automatically from the distance between our shop and the exact location you share, and is shown in your cart before you pay. Some orders may be free-delivery as shown at checkout.</p>
-<h3>Delivery time</h3><p>We dispatch after your payment is verified. Delivery time depends on distance, courier or delivery-partner availability and weather or local conditions. Any time we mention is an <b>estimate</b>, not a guarantee.</p>
+<h3>Delivery time</h3><p>We dispatch after we confirm your order with you on WhatsApp. Delivery time depends on distance, courier or delivery-partner availability and weather or local conditions. Any time we mention is an <b>estimate</b>, not a guarantee.</p>
 <h3>Your location and address</h3><p>Please give a correct address, phone number and exact location and keep your phone reachable. If delivery fails because of wrong details or no response, we may charge for re-delivery or cancel the order.</p>
 <h3>Delivery partners</h3><p>We may use delivery partners or couriers. We share only the name, phone, address and location needed to deliver your order.</p>
 <h3>Damage in transit</h3><p>Please check the parcel at delivery and record an unboxing video. Report damage within 48 hours as per our Refund &amp; Return Policy.</p>
@@ -371,7 +368,7 @@ async function delAccount(){
   document.getElementById("delov")?.remove();
   const o=document.createElement("div");o.id="delov";
   o.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(20,10,12,.55);display:flex;align-items:flex-end;justify-content:center";
-  o.innerHTML=`<div style="background:#fff;color:#282328;width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));line-height:1.6;font-size:14.5px"><h2 style="margin:0 0 8px;color:#d51c36">Delete my account</h2><p style="margin:0 0 10px">This permanently deletes your account and removes your name, phone, address and location from your past orders. We keep only anonymous order and payment records needed for accounting. If you registered with a shop code, that code cannot be used again. <b>This cannot be undone.</b></p><p style="margin:0 0 8px">Type <b>DELETE</b> to confirm, then sign in with Google once more.</p><input aria-label="DELETE" id="dtx" autocomplete="off" placeholder="DELETE"><p class="err" id="dem"></p><div style="display:flex;gap:10px"><button class="btn" id="dcn" type="button" style="flex:1">Cancel</button><button class="btn d" id="dgo" type="button" style="flex:1">Delete permanently</button></div></div>`;
+  o.innerHTML=`<div style="background:#fff;color:#282328;width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));line-height:1.6;font-size:14.5px"><h2 style="margin:0 0 8px;color:#d51c36">Delete my account</h2><p style="margin:0 0 10px">This permanently deletes your account and removes your name, phone, address and location from your past orders. We keep only anonymous order records needed for accounting. If you registered with a shop code, that code cannot be used again. <b>This cannot be undone.</b></p><p style="margin:0 0 8px">Type <b>DELETE</b> to confirm, then sign in with Google once more.</p><input aria-label="DELETE" id="dtx" autocomplete="off" placeholder="DELETE"><p class="err" id="dem"></p><div style="display:flex;gap:10px"><button class="btn" id="dcn" type="button" style="flex:1">Cancel</button><button class="btn d" id="dgo" type="button" style="flex:1">Delete permanently</button></div></div>`;
   document.body.appendChild(o);
   $("#dcn").onclick=()=>o.remove();
   $("#dgo").onclick=async()=>{const em=$("#dem"),b=$("#dgo");let unsubbed=false,committed=false;
@@ -381,7 +378,7 @@ async function delAccount(){
       const u=auth.currentUser;
       await reauthenticateWithPopup(u,new GoogleAuthProvider());
       const snap=await getDocs(query(collection(db,"orders"),where("uid","==",u.uid)));
-      if(snap.docs.some(d=>{const x=d.data();return x.paymentStatus==="VERIFYING"||(x.paymentStatus==="PAID"&&(x.trackStatus||"placed")!=="delivered")})){
+      if(snap.docs.some(d=>["placed","packed","shipped","out_for_delivery"].includes(d.data().trackStatus))){
         em.textContent="You have an order in progress. Please wait until it is delivered, or call us on "+SHOP_PHONE+".";b.disabled=false;return}
       em.textContent="Deleting…";
       const w=writeBatch(db);
@@ -410,7 +407,7 @@ function contact(){
   <div class="ct-row"><span class="ct-ic">📍</span><div><b>Address</b><div>Display Wallah<br>${SHOP_ADDR}</div><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Display Wallah, "+SHOP_ADDR)}" target="_blank" rel="noopener">Open in Maps</a></div></div>
   <div class="ct-row"><span class="ct-ic">💬</span><div><b>WhatsApp broadcast</b><div class="mut sm">Updates and offers</div><a href="${WA_LINK}" target="_blank" rel="noopener">Join the group</a></div></div>
   <p class="mut sm" style="margin:14px 0 0"><b>Policy:</b> No return, no exchange.</p></div>`}
-const payBadge=o=>({t:"Order"}),payInfo=()=>{};
+const payBadge=o=>({t:"Order"});
 const WA_NUM="91"+SHOP_PHONE;
 function waMsg(o){
   const lines=o.items.map((i,k)=>`${k+1}. ${i.name} × ${i.qty} = ${rs(i.price*i.qty)}`);
@@ -519,7 +516,7 @@ function cart(){S.sh=S.sh||{};
     }catch(x){e.textContent=typeof x==="string"?x:"Could not prepare the order. Try again.";btn.disabled=false}})}
 
 function admin(){
-  const T=[["products","Products"],["codes","Shop codes"],["users","Users"],["orders","Orders"],["delivery","Delivery"],["errors","Errors"],["datareq","Data requests"],...(isOwner()?[["admins","Admins"]]:[])];
+  const T=[["products","Products"],["codes","Shop codes"],["users","Users"],["orders","Orders"],["delivery","Delivery"],["errors","Errors"],["datareq","Data requests"],["admins","Admins"]];
   $("#main").innerHTML=`<div class="tabs">${T.map(t=>`<button class="btn ${S.tab===t[0]?"on":""}" data-t="${t[0]}">${t[1]}</button>`).join("")}</div><div id="ab" class="scroll">Loading…</div>`;
   document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{S.tab=b.dataset.t;admin()});
   ({codes:aCodes,users:aUsers,orders:aOrders,products:aProducts,admins:aAdmins,delivery:aDelivery,errors:aErrors,datareq:aDataReq})[S.tab]()}
@@ -531,7 +528,7 @@ async function aCodes(){
   <table style="margin-top:14px"><tr><th>Code</th><th>Status</th><th>Used by</th><th></th></tr>${rows.map(c=>`<tr><td class="mono">${esc(c.code)}<div class="mut">${esc(c.note||"")}</div></td><td>${c.status}</td><td>${esc(c.usedByEmail||"")}</td><td><button class="btn" data-cp="${esc(c.code)}">Copy</button></td></tr>`).join("")}</table>`;
   $("#gen").onclick=async()=>{const A="ABCDEFGHJKMNPQRSTUVWXYZ23456789",n=Math.min(Math.max(+$("#cn").value||1,1),50);$("#gen").disabled=true;
    for(let i=0;i<n;i++){const r=crypto.getRandomValues(new Uint32Array(8)),s=[...r].map(x=>A[x%A.length]).join(""),code=s.slice(0,4)+"-"+s.slice(4);
-    await setDoc(doc(db,"shopCodes",code),{code,status:"unused",note:$("#nt").value.trim(),createdAt:serverTimestamp(),usedBy:null,usedByEmail:null,usedAt:null})}aCodes()};
+    await setDoc(doc(db,"shopCodes",code),{code,status:"unused",note:$("#nt").value.trim().slice(0,100),createdAt:serverTimestamp(),usedBy:null,usedByEmail:null,usedAt:null})}aCodes()};
   document.querySelectorAll("[data-cp]").forEach(b=>b.onclick=()=>{navigator.clipboard.writeText(b.dataset.cp);b.textContent="Copied"})}
 
 async function aUsers(){
@@ -542,26 +539,9 @@ async function aUsers(){
 
 async function aOrders(){
   const snap=await getDocs(query(collection(db,"orders"),orderBy("createdAt","desc"))),all=snap.docs.map(d=>({id:d.id,...d.data()})),
-    f=S.of||"verify",nv=all.filter(o=>o.paymentStatus==="VERIFYING").length,
-    rows=f==="all"?all:f==="paid"?all.filter(o=>o.paymentStatus==="PAID"):all.filter(o=>o.paymentStatus==="VERIFYING"),
-    pc=o=>o.paymentStatus==="PAID"?"in":o.paymentStatus==="VERIFYING"?"":"out";
-  $("#ab").innerHTML=`<div class="tabs" style="margin-top:0">${[["verify","Verify payments ("+nv+")"],["paid","Confirmed"],["all","All orders"]].map(t=>`<button class="btn ${f===t[0]?"on":""}" data-of="${t[0]}">${t[1]}</button>`).join("")}</div>`+
-  (rows.length?`<table><tr><th>Order</th><th>Items</th><th>Total</th><th>Payment</th><th>Ship to</th><th>Tracking</th></tr>${rows.map(o=>`<tr><td>${o.id.slice(0,6)}<div class="mut">${when(o.createdAt)}</div><div class="mut">${esc(o.userEmail||"")}</div><div class="mut mono">${esc(o.shopCode)}</div></td><td>${o.items.map(i=>esc(i.name)+" ×"+i.qty).join("<br>")}</td><td>${rs(o.amount)}<div class="mut">${o.shippingCharge?"incl. delivery "+rs(o.shippingCharge)+"<br>":""}${o.distanceKm?o.distanceKm+" km · ":""}${((o.weightGrams||0)/1000).toFixed(1)} kg</div></td>
-  <td class="${pc(o)}">${o.paymentStatus==="VERIFYING"?"VERIFY":o.paymentStatus}<div class="mut mono">${o.utr?"UTR "+esc(o.utr):""}</div>${o.paymentStatus==="VERIFYING"?`<div class="mut">Check ${rs(o.amount)} received</div><div class="trk-adm"><button class="btn p" data-ap="${esc(o.id)}">Approve</button><button class="btn d" data-rj="${esc(o.id)}">Reject</button></div>`:""}</td><td>${esc(o.shipping.name)}, ${esc(o.shipping.phone)}<br>${esc(o.shipping.address)}, ${esc(o.shipping.city)} ${esc(o.shipping.pincode)}${o.shipping.lat?`<br><a href="${mapsUrl(o.shipping.lat,o.shipping.lng)}" target="_blank" rel="noopener">📍 Open in Google Maps</a>`:""}</td><td>${trkCell(o)}</td></tr>`).join("")}</table>`:`<p class="mut">${f==="verify"?"No payments waiting to be verified.":"No orders here yet."}</p>`);
-  document.querySelectorAll("[data-of]").forEach(b=>b.onclick=()=>{S.of=b.dataset.of;aOrders()});
-  document.querySelectorAll("[data-ap]").forEach(b=>b.onclick=async()=>{
-    if(!isOwner())return alert("Only the owner can approve payments.");
-    const o=all.find(x=>x.id===b.dataset.ap);if(!o||!confirm(`Approve only if ${rs(o.amount)} (UTR ${o.utr}) is really in your bank/UPI app.\n\nApprove this payment?`))return;
-    document.querySelectorAll("[data-ap],[data-rj]").forEach(x=>x.disabled=true);
-    try{const w=writeBatch(db);w.update(doc(db,"orders",o.id),{paymentStatus:"PAID",paidAt:serverTimestamp(),trackStatus:"placed",approvedBy:S.user.email});
-      o.items.forEach(i=>{if(S.products.some(p=>p.id===i.id))w.update(doc(db,"products",i.id),{stock:increment(-i.qty)})});await w.commit()}
-    catch(x){alert("Could not approve: "+(x.code||x.message||x))}
-    aOrders()});
-  document.querySelectorAll("[data-rj]").forEach(b=>b.onclick=async()=>{
-    if(!isOwner())return alert("Only the owner can reject payments.");
-    const r=prompt("Reason (optional, shown to customer):");if(r===null)return;
-    try{await updateDoc(doc(db,"orders",b.dataset.rj),{paymentStatus:"REJECTED",rejectReason:r.trim().slice(0,300)})}catch(x){alert("Could not reject: "+(x.code||x.message||x))}
-    aOrders()});
+    rows=all;
+  $("#ab").innerHTML=(rows.length?`<table><tr><th>Order</th><th>Items</th><th>Total</th><th>Ship to</th><th>Tracking</th></tr>${rows.map(o=>`<tr><td>${o.id.slice(0,6)}<div class="mut">${when(o.createdAt)}</div><div class="mut">${esc(o.userEmail||"")}</div><div class="mut mono">${esc(o.shopCode)}</div></td><td>${o.items.map(i=>esc(i.name)+" ×"+i.qty).join("<br>")}</td><td>${rs(o.amount)}<div class="mut">${o.shippingCharge?"incl. delivery "+rs(o.shippingCharge)+"<br>":""}${o.distanceKm?o.distanceKm+" km · ":""}${((o.weightGrams||0)/1000).toFixed(1)} kg</div></td>
+  <td>${esc(o.shipping.name)}, ${esc(o.shipping.phone)}<br>${esc(o.shipping.address)}, ${esc(o.shipping.city)} ${esc(o.shipping.pincode)}${o.shipping.lat?`<br><a href="${mapsUrl(o.shipping.lat,o.shipping.lng)}" target="_blank" rel="noopener">📍 Open in Google Maps</a>`:""}</td><td>${trkCell(o)}</td></tr>`).join("")}</table>`:`<p class="mut">No orders here yet.</p>`);
   wireTrk()}
 
 
@@ -582,11 +562,10 @@ async function myOrders(){
 function moList(){
   const L=S.mo||[];
   $("#mol").innerHTML=L.length?L.map((o,i)=>{const bd=payBadge(o);
-    return `<div class="mo-card" data-oid="${esc(o.id)}" style="--i:${i}"><div class="mo-top"><div><b>Order #${esc(o.id.slice(0,6).toUpperCase())}</b><div class="mut sm">${dt(o.createdAt)}</div></div><span class="mo-badge ${bd.done?"done":bd.wait?"wait":""}">${bd.t}</span></div><div class="mo-items">${o.items.map(it=>esc(it.name)+" ×"+it.qty).join(", ")}</div><div class="mo-foot"><b>${rs(o.amount)}</b><span class="mut sm">${o.paymentStatus==="PAID"?"Tap to track ›":o.paymentStatus==="AWAITING_PAYMENT"&&!expired(o)?"Tap to pay ›":"Tap for details ›"}</span></div></div>`}).join(""):'<p class="mut">No orders yet. Your orders will appear here.</p>';
+    return `<div class="mo-card" data-oid="${esc(o.id)}" style="--i:${i}"><div class="mo-top"><div><b>Order #${esc(o.id.slice(0,6).toUpperCase())}</b><div class="mut sm">${dt(o.createdAt)}</div></div><span class="mo-badge ${bd.done?"done":bd.wait?"wait":""}">${bd.t}</span></div><div class="mo-items">${o.items.map(it=>esc(it.name)+" ×"+it.qty).join(", ")}</div><div class="mo-foot"><b>${rs(o.amount)}</b><span class="mut sm">Tap to track ›</span></div></div>`}).join(""):'<p class="mut">No orders yet. Your orders will appear here.</p>';
   document.querySelectorAll("[data-oid]").forEach(c=>c.onclick=()=>moTrack(c.dataset.oid))}
 function moTrack(id){
   const o=(S.mo||[]).find(x=>x.id===id);if(!o)return;
-  if(o.paymentStatus!=="PAID")return payInfo(o);
   const k=Math.max(0,TR.findIndex(t=>t[0]===o.trackStatus)),n=TR.length-1,fin=k===n,T=Math.max(.6,k*.45),times=[o.paidAt||o.createdAt,o.packedAt,o.shippedAt,o.outAt,o.deliveredAt],sh=o.shipping||{};
   $("#dr").innerHTML=`<div class="drawer"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Track order</h2><button class="btn" id="x">Close</button></div>
   <div class="mut sm" style="margin-top:4px">Order #${esc(o.id.slice(0,6).toUpperCase())} · ${dt(o.createdAt)}</div>
@@ -598,10 +577,10 @@ function moTrack(id){
   <button class="btn" id="rf" style="margin-top:14px;width:100%">Refresh status</button></div>`;
   $("#x").onclick=()=>{$("#dr").innerHTML=""};
   $("#rf").onclick=async()=>{const b=$("#rf");b.disabled=true;b.textContent="Refreshing…";try{await moFetch();moTrack(id);S.view==="orders"&&$("#mol")&&moList()}catch(x){b.disabled=false;b.textContent="Could not refresh. Try again."}}}
-const trkCell=o=>o.paymentStatus!=="PAID"?'<span class="mut">—</span>':!isOwner()?`<span class="mut">${esc((TR.find(t=>t[0]===(o.trackStatus||"placed"))||TR[0])[1])}</span>`:`<div class="trk-adm">${TR.map(t=>`<button class="btn ${(o.trackStatus||"placed")===t[0]?"p":""}" data-ot="${esc(o.id)}" data-os="${t[0]}">${t[1]}</button>`).join("")}</div>`;
+const trkCell=o=>!o.trackStatus?'<span class="mut">—</span>':!isAdmin()?`<span class="mut">${esc((TR.find(t=>t[0]===(o.trackStatus||"placed"))||TR[0])[1])}</span>`:`<div class="trk-adm">${TR.map(t=>`<button class="btn ${(o.trackStatus||"placed")===t[0]?"p":""}" data-ot="${esc(o.id)}" data-os="${t[0]}">${t[1]}</button>`).join("")}</div>`;
 const TF={packed:"packedAt",shipped:"shippedAt",out_for_delivery:"outAt",delivered:"deliveredAt"};
 function wireTrk(){document.querySelectorAll("[data-ot]").forEach(b=>b.onclick=async()=>{
-  if(!isOwner())return alert("Only the owner (displaywallahoffical@gmail.com) can change order status.");
+  if(!isAdmin())return alert("Only admins can change order status.");
   document.querySelectorAll("[data-ot]").forEach(x=>x.disabled=true);
   try{const st=b.dataset.os,k=TF[st],up={trackStatus:st};if(k&&!(await getDoc(doc(db,"orders",b.dataset.ot))).data()?.[k])up[k]=new Date().toISOString();await updateDoc(doc(db,"orders",b.dataset.ot),up)}
   catch(x){alert("Could not update the order status: "+(typeof x==="string"?x:(x&&(x.code||x.message))||""))}
